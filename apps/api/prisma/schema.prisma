@@ -1,0 +1,1259 @@
+// FICMS Prisma schema
+// TypeScript monorepo → NestJS API → Prisma ORM → PostgreSQL
+//
+// Every business table carries `organizationId` (and, where appropriate,
+// `facilityId` / `departmentId`) to enforce tenant isolation at the DB layer,
+// mirroring the application-level TenantGuard + PostgreSQL Row-Level Security.
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// Tenancy, org & structure
+// ===========================================================================
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model Organization {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  slug         String    @unique
+  domain       String?   @unique
+  status       OrgStatus @default(PENDING)
+  logoKey      String?
+  faviconKey   String?
+  settings     OrganizationSetting[]
+  facilities   Facility[]
+  departments  Department[]
+  users        User[]
+  patients     Patient[]
+  auditEvents  AuditEvent[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([slug])
+}
+
+model OrganizationSetting {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  key            String
+  value          Json
+  @@unique([organizationId, key])
+}
+
+enum FacilityStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Facility {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  code           String
+  address        String?
+  city           String?
+  phone          String?
+  timezone       String?
+  status         FacilityStatus @default(ACTIVE)
+  departments    Department[]
+  users          User[]
+  appointments   Appointment[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model Department {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  facilityId     String?      @db.Uuid
+  facility       Facility?    @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  name           String
+  code           String
+  users          User[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+// ===========================================================================
+// Users, roles, permissions, sessions
+// ===========================================================================
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DISABLED
+  PENDING
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String?  @db.Uuid
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  facilityId       String?  @db.Uuid
+  facility         Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  departmentId     String?  @db.Uuid
+  department       Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  email            String   @unique
+  emailVerified    Boolean  @default(false)
+  name             String
+  role             String
+  passwordHash     String?
+  mfaSecret        String?
+  mfaEnabled       Boolean  @default(false)
+  status           UserStatus @default(PENDING)
+  failedLoginCount Int      @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  sessions         Session[]
+  passwordResetToken String?
+  passwordResetAt  DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  @@index([organizationId])
+  @@index([role])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  ip           String?
+  userAgent    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ===========================================================================
+// Patients, couples, documents, consents
+// ===========================================================================
+
+enum Sex {
+  FEMALE
+  MALE
+  OTHER
+  UNKNOWN
+}
+
+enum PatientStatus {
+  ACTIVE
+  ARCHIVED
+  DECEASED
+}
+
+model Patient {
+  id                  String       @id @default(uuid()) @db.Uuid
+  organizationId      String       @db.Uuid
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  medicalRecordNumber String       @unique
+  givenName           String
+  familyName          String
+  preferredName       String?
+  dateOfBirth         DateTime?
+  sex                 Sex          @default(UNKNOWN)
+  email               String?
+  phone               String?
+  address             String?
+  city                String?
+  emergencyName       String?
+  emergencyPhone      String?
+  status              PatientStatus @default(ACTIVE)
+  version             Int          @default(1)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  userId              String?      @unique @db.Uuid
+  user                User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  appointments        Appointment[]
+  cycles              Cycle[]
+  labOrders           LabOrder[]
+  invoices            Invoice[]
+  partnerLinks        Partner[]    @relation("PatientPartners")
+  documents           PatientDocument[]
+  consents            Consent[]
+  ultrasoundScans     UltrasoundScan[]
+  vitalSigns          VitalSign[]
+  counselingSessions  CounselingSession[]
+  prescriptions       Prescription[]
+  dischargeNotes      NursingNote[]
+
+  @@index([organizationId, medicalRecordNumber])
+  @@index([organizationId, familyName, givenName])
+  @@index([organizationId, phone])
+}
+
+model Partner {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @db.Uuid
+  patientId        String   @db.Uuid
+  patient          Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade, name: "PatientPartners")
+  partnerId        String   @db.Uuid
+  relationshipType String   @default("partner")
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+
+  @@unique([patientId, partnerId])
+  @@index([organizationId])
+  @@index([partnerId])
+}
+
+enum PatientDocumentType {
+  ID
+  SCAN
+  REPORT
+  CONSENT
+  OTHER
+}
+
+model PatientDocument {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type           PatientDocumentType @default(OTHER)
+  fileName       String
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  description    String?
+  uploadedById   String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, patientId])
+}
+
+enum ConsentStatus {
+  DRAFT
+  PENDING_SIGNATURE
+  SIGNED
+  WITNESSED
+  REVOKED
+}
+
+model Consent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  title          String
+  content        String?  @db.Text
+  templateKey    String?
+  status         ConsentStatus @default(DRAFT)
+  signedAt       DateTime?
+  signedByName   String?
+  signedById     String?
+  witnessName    String?
+  witnessId      String?
+  evidenceKey    String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// Appointments
+// ===========================================================================
+
+enum AppointmentStatus {
+  REQUESTED
+  SCHEDULED
+  CHECKED_IN
+  IN_PROGRESS
+  COMPLETED
+  NO_SHOW
+  CANCELLED
+}
+
+enum AppointmentPriority {
+  ROUTINE
+  URGENT
+  EMERGENCY
+}
+
+model Appointment {
+  id            String   @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  facilityId    String?  @db.Uuid
+  facility      Facility? @relation(fields: [facilityId], references: [id], onDelete: SetNull)
+  code          String   @unique
+  patientId     String   @db.Uuid
+  patient       Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  practitionerId String?
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+  status         AppointmentStatus @default(REQUESTED)
+  priority       AppointmentPriority @default(ROUTINE)
+  serviceType    String?
+  queueNumber    String?
+  checkInAt      DateTime?
+  checkOutAt     DateTime?
+  notes          String?
+  source         String?
+  cancelledReason String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, scheduledStart])
+  @@index([organizationId, patientId])
+  @@index([organizationId, status])
+}
+
+// ===========================================================================
+// Medical records & consultations
+// ===========================================================================
+
+model Encounter {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  appointmentId  String?
+  clinicianId    String?
+  type           String   @default("consultation")
+  chiefComplaint String?
+  notesSummary   String?  @db.Text
+  enteredAt      DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, patientId])
+}
+
+model ClinicalNote {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  encounterId    String?   @db.Uuid
+  encounter      Encounter? @relation(fields: [encounterId], references: [id], onDelete: Cascade)
+  patientId      String    @db.Uuid
+  authorId       String
+  category       String    @default("clinical") // clinical | counseling | nursing | embryology
+  body           String    @db.Text
+  signed         Boolean   @default(false)
+  signedById     String?
+  signedAt       DateTime?
+  supersededById String?
+  // immutable revision chain
+  previousId     String?
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now())
+
+  @@index([organizationId, patientId])
+}
+
+model MedicalHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  allergies      Json?
+  familyHistory  Json?
+  socialHistory  Json?
+  surgicalHistory Json?
+  reproductiveHistory Json?
+  obstetricHistory Json?
+  medications    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// Fertility / cycles
+// ===========================================================================
+
+enum CycleStatus {
+  PLANNED
+  BASELINE_ASSESSMENT
+  STIMULATION
+  MONITORING
+  TRIGGER
+  RETRIEVAL
+  FERTILIZATION
+  EMBRYO_CULTURE
+  TRANSFER
+  FREEZING
+  LUTEAL_SUPPORT
+  PREGNANCY_TEST
+  CLINICAL_PREGNANCY
+  OUTCOME
+  CANCELLED
+}
+
+enum TreatmentType {
+  IVF
+  ICSI
+  IUI
+  OTHER
+}
+
+model Cycle {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  patientId       String       @db.Uuid
+  patient         Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  partnerId       String?      @db.Uuid
+  cycleNumber     String
+  treatmentType   TreatmentType
+  protocolTemplate String?
+  status          CycleStatus  @default(PLANNED)
+  diagnosis       String?
+  startDate       DateTime?
+  triggerAt       DateTime?
+  retrievalAt     DateTime?
+  transferAt      DateTime?
+  pregnancyTestAt DateTime?
+  outcome         String?
+  version         Int          @default(1)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  medications     CycleMedication[]
+  follicularScans UltrasoundScan[]
+  embryos         Embryo[]
+  events          CycleEvent[]
+
+  @@unique([organizationId, cycleNumber])
+  @@index([organizationId, patientId])
+  @@index([organizationId, status])
+}
+
+model CycleMedication {
+  id        String   @id @default(uuid()) @db.Uuid
+  cycleId   String   @db.Uuid
+  cycle     Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  name      String
+  dose      String
+  route     String?
+  dayFrom   Int?
+  dayTo     Int?
+  instructions String?
+  createdAt DateTime @default(now())
+
+  @@index([cycleId])
+}
+
+model CycleEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  cycleId    String   @db.Uuid
+  cycle      Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  eventType  String   // trigger, retrieval, fertilization_check, embryo_observation, transfer, freezing, etc
+  title      String
+  scheduledAt DateTime?
+  completedAt DateTime?
+  notes      String?
+  createdBy  String?
+  createdAt  DateTime @default(now())
+
+  @@index([cycleId, scheduledAt])
+}
+
+// ===========================================================================
+// Andrology
+// ===========================================================================
+
+enum SemenAnalysisStatus {
+  REQUESTED
+  COLLECTED
+  PROCESSING
+  VERIFIED
+  RELEASED
+}
+
+model SemenAnalysis {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  patientId       String   @db.Uuid
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  cycleId         String?  @db.Uuid
+  cycle           Cycle?   @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  status          SemenAnalysisStatus @default(REQUESTED)
+  collectionDate  DateTime?
+  abstinenceDays  Float?
+  volumeMl        Float?
+  concentrationM  Float?
+  totalCountM     Float?
+  motilityPercent Float?
+  progressiveMotilityPercent Float?
+  morphologyPercent Float?
+  ph              Float?
+  notes           String?
+  verifiedById    String?
+  verifiedAt      DateTime?
+  releasedById    String?
+  releasedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// Embryology
+// ===========================================================================
+
+enum EmbryoStatus {
+  OOCYTE
+  FERTILIZED
+  CULTURING
+  TRANSFERRED
+  FROZEN
+  DISCARDED
+  BIOPSIED
+  WARMED
+  THAWED
+}
+
+model Embryo {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  cycleId        String   @db.Uuid
+  cycle          Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  patientId      String   @db.Uuid
+  label          String   // e.g. "2PN", "Day3-4AA"
+  status         EmbryoStatus @default(OOCYTE)
+  dayObserved    Int?
+  grade          String?
+  development    String?
+  location       String?  // incubator/tank position
+  notes          String?
+  createdById    String?
+  witnessedById  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  observations   EmbryoObservation[]
+
+  @@index([organizationId, cycleId])
+}
+
+model EmbryoObservation {
+  id          String   @id @default(uuid()) @db.Uuid
+  embryoId    String   @db.Uuid
+  embryo      Embryo   @relation(fields: [embryoId], references: [id], onDelete: Cascade)
+  day         Int
+  cellCount   Int?
+  grade       String?
+  fragmentationPercent Float?
+  notes       String?
+  observedById String?
+  witnessedById String?
+  createdAt   DateTime @default(now())
+
+  @@index([embryoId, day])
+}
+
+// ===========================================================================
+// Cryostorage
+// ===========================================================================
+
+model CryoTank {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  facilityId     String?  @db.Uuid
+  name           String
+  label          String?
+  capacity       Int
+  currentTempC   Float?
+  alarmLowC      Float?
+  alarmHighC     Float?
+  status         String   @default("active") // active | full | maintenance | decommissioned
+  positions      CryoPosition[]
+  temperatureLogs TemperatureLog[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+model CryoPosition {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  tankId         String   @db.Uuid
+  tank           CryoTank @relation(fields: [tankId], references: [id], onDelete: Cascade)
+  room           String?
+  canister       String?
+  cane           String?
+  goblet         String?
+  rack           String?
+  position       String?
+  label          String?
+  storageItem    CryoStorageItem?
+  // only one storage item can occupy a position at a time
+  @@unique([tankId, canister, cane, goblet, rack, position])
+  @@index([organizationId, tankId])
+}
+
+enum StorageItemType {
+  EMBRYO
+  OOCYTE
+  SPERM
+  TISSUE
+}
+
+enum StorageItemStatus {
+  STORED
+  RELEASED
+  THAWED
+  TRANSFERRED
+  DISPOSED
+  EXPIRED
+}
+
+model CryoStorageItem {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  positionId      String   @unique @db.Uuid
+  position        CryoPosition @relation(fields: [positionId], references: [id], onDelete: Restrict)
+  patientId       String   @db.Uuid
+  cycleId         String?  @db.Uuid
+  type            StorageItemType
+  label           String
+  status          StorageItemStatus @default(STORED)
+  frozenAt        DateTime?
+  thawedAt        DateTime?
+  releasedAt      DateTime?
+  disposedAt      DateTime?
+  consentStatus   String?
+  agreementSignedAt DateTime?
+  renewalDate     DateTime?
+  storedById      String?
+  witnessedById   String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, status])
+}
+
+model TemperatureLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  tankId         String   @db.Uuid
+  tank           CryoTank @relation(fields: [tankId], references: [id], onDelete: Cascade)
+  tempC          Float
+  source         String   @default("manual") // manual | device
+  deviceId       String?
+  recordedAt     DateTime @default(now())
+  isAlarm        Boolean  @default(false)
+  recordedById   String?
+
+  @@index([organizationId, tankId, recordedAt])
+}
+
+// ===========================================================================
+// Ultrasound / imaging
+// ===========================================================================
+
+model UltrasoundScan {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  cycleId        String?  @db.Uuid
+  cycle          Cycle?   @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  type           String   // follicular_monitoring | pelvic | early_pregnancy
+  scannedAt      DateTime @default(now())
+  endometrialThicknessMm Float?
+  leftOvaryFollicles Json?
+  rightOvaryFollicles Json?
+  report         String?  @db.Text
+  verifiedById   String?
+  verifiedAt     DateTime?
+  imagesKey      Json?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// Nursing
+// ===========================================================================
+
+model VitalSign {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  recordedAt     DateTime @default(now())
+  temperatureC   Float?
+  pulseBpm       Int?
+  bpSystolic     Int?
+  bpDiastolic    Int?
+  respiratoryRate Int?
+  spo2           Int?
+  weightKg       Float?
+  heightCm       Float?
+  recordedById   String?
+
+  @@index([organizationId, patientId])
+}
+
+model NursingNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  administeredMedication String?
+  procedure      String?
+  checklist      Json?
+  observation    String?  @db.Text
+  dischargeInstructions String? @db.Text
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// General diagnostic laboratory
+// ===========================================================================
+
+model LabTestCatalog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  code           String
+  category       String?
+  unit           String?
+  referenceLow   String?
+  referenceHigh  String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, code])
+}
+
+enum LabOrderStatus {
+  REQUESTED
+  SPECIMEN_COLLECTED
+  ACCESSED
+  PROCESSING
+  VERIFIED
+  RELEASED
+  INVALIDATED
+}
+
+model LabOrder {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  orderNumber    String   @unique
+  status         LabOrderStatus @default(REQUESTED)
+  orderedById    String?
+  orderedAt      DateTime @default(now())
+  priority       String   @default("routine")
+  requestedTests Json?
+  specimens      LabSpecimen[]
+  results        LabResult[]
+  alertRaisedAt  DateTime?
+  releasedAt     DateTime?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+model LabSpecimen {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  labOrderId     String   @db.Uuid
+  labOrder       LabOrder @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  barcode        String   @unique
+  type           String
+  collectedAt    DateTime?
+  collectedById  String?
+  receivedAt     DateTime?
+  status         String   @default("collected")
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, labOrderId])
+}
+
+model LabResult {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  labOrderId     String   @db.Uuid
+  labOrder       LabOrder @relation(fields: [labOrderId], references: [id], onDelete: Cascade)
+  testName       String
+  testCode       String?
+  value          String
+  unit           String?
+  referenceLow   String?
+  referenceHigh  String?
+  isAbnormal     Boolean  @default(false)
+  isCritical     Boolean  @default(false)
+  status         String   @default("result")
+  enteredById    String?
+  verifiedById   String?
+  verifiedAt     DateTime?
+  releasedById   String?
+  releasedAt     DateTime?
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, labOrderId])
+}
+
+// ===========================================================================
+// Pharmacy & inventory
+// ===========================================================================
+
+model MedicationCatalog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  genericName    String?
+  form           String?
+  strength       String?
+  controlled     Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId])
+}
+
+enum PrescriptionStatus {
+  DRAFT
+  PRESCRIBED
+  VERIFIED
+  DISPENSED
+  PARTIALLY_DISPENSED
+  CANCELLED
+}
+
+model Prescription {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  status         PrescriptionStatus @default(DRAFT)
+  prescribedById String?
+  prescribedAt   DateTime?
+  verifiedById   String?
+  verifiedAt     DateTime?
+  notes          String?
+  items          PrescriptionItem[]
+  dispensations  Dispensation[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+model PrescriptionItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  prescriptionId String   @db.Uuid
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicationName String
+  dosage         String
+  frequency      String?
+  durationDays   Int?
+  instructions   String?
+  quantity       Int
+  issuedQuantity Int      @default(0)
+  createdAt      DateTime @default(now())
+}
+
+model Dispensation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  prescriptionId String   @db.Uuid
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicationName String
+  quantity       Int
+  batch          String?
+  expiryDate     DateTime?
+  dispensedById  String?
+  dispensedAt    DateTime @default(now())
+}
+
+model InventoryItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  facilityId     String?  @db.Uuid
+  name           String
+  sku            String
+  category       String?
+  unit           String?
+  quantityOnHand Int      @default(0)
+  minimumStock   Int      @default(0)
+  expiryDate     DateTime?
+  batch          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, sku])
+  @@index([organizationId, expiryDate])
+}
+
+model StockMovement {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  inventoryItemId String  @db.Uuid
+  inventoryItem  InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  type           String   // receipt | issue | adjustment | transfer_in | transfer_out | return
+  quantity       Int
+  batch          String?
+  reason         String?
+  performedById  String?
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, inventoryItemId])
+}
+
+model Supplier {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  contact        String?
+  phone          String?
+  email          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  supplierId     String?  @db.Uuid
+  supplier       Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  poNumber       String   @unique
+  status         String   @default("draft")
+  orderedAt      DateTime @default(now())
+  receivedAt     DateTime?
+  createdById    String?
+  notes          String?
+  createdAt      DateTime @default(now())
+}
+
+// ===========================================================================
+// Finance & billing
+// ===========================================================================
+
+model ServiceCatalog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  code           String
+  category       String?
+  price          Decimal  @db.Decimal(12, 2)
+  currency       String?
+  taxable        Boolean  @default(false)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, code])
+}
+
+model TreatmentPackage {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  code           String
+  description    String?
+  price          Decimal  @db.Decimal(12, 2)
+  currency       String?
+  services       Json?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  @@unique([organizationId, code])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+model Invoice {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  invoiceNumber  String   @unique
+  status         InvoiceStatus @default(DRAFT)
+  currency       String
+  subtotal       Decimal  @default(0) @db.Decimal(12, 2)
+  taxTotal       Decimal  @default(0) @db.Decimal(12, 2)
+  total          Decimal  @default(0) @db.Decimal(12, 2)
+  amountPaid     Decimal  @default(0) @db.Decimal(12, 2)
+  amountDue      Decimal  @default(0) @db.Decimal(12, 2)
+  discount       Decimal  @default(0) @db.Decimal(12, 2)
+  dueDate       DateTime?
+  notes          String?
+  approvedById   String?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lineItems      InvoiceLineItem[]
+  payments       Payment[]
+  installmentPlans InstallmentPlan[]
+
+  @@index([organizationId, patientId])
+  @@index([organizationId, status])
+}
+
+model InvoiceLineItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  invoiceId      String   @db.Uuid
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description    String
+  quantity       Int      @default(1)
+  unitPrice      Decimal  @db.Decimal(12, 2)
+  totalPrice     Decimal  @db.Decimal(12, 2)
+  taxRate        Decimal  @default(0) @db.Decimal(5, 2)
+  createdAt      DateTime @default(now())
+}
+
+model InstallmentPlan {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  invoiceId      String    @db.Uuid
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  installmentNumber Int
+  amountDue       Decimal   @db.Decimal(12, 2)
+  dueDate         DateTime?
+  status          String    @default("pending") // pending | paid | overdue | cancelled
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  MOBILE_MONEY
+  INSURANCE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Payment {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @db.Uuid
+  invoiceId      String?   @db.Uuid
+  invoice        Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  amount         Decimal   @db.Decimal(12, 2)
+  currency       String
+  method         PaymentMethod
+  status         PaymentStatus @default(PENDING)
+  reference      String?
+  provider       String?
+  externalRef    String?
+  idempotencyKey String    @unique
+  paidById       String?
+  paidAt         DateTime?
+  createdAt      DateTime  @default(now())
+  refunds        Refund[]
+
+  @@index([organizationId, invoiceId])
+}
+
+model Refund {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  paymentId      String   @db.Uuid
+  payment        Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount         Decimal  @db.Decimal(12, 2)
+  reason         String?
+  approvedById   String?
+  refundedAt     DateTime @default(now())
+}
+
+model CreditNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  invoiceId      String?  @db.Uuid
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  creditNumber   String   @unique
+  amount         Decimal  @db.Decimal(12, 2)
+  reason         String?
+  issuedById     String?
+  issuedAt       DateTime @default(now())
+}
+
+// ===========================================================================
+// Counseling
+// ===========================================================================
+
+model CounselingSession {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  patientId      String   @db.Uuid
+  patient        Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  sessionType    String   // pre_treatment | consent | post_failure | support_group | follow_up
+  sessionDate    DateTime @default(now())
+  counselorId    String?
+  summary        String?  @db.Text
+  confidential   Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, patientId])
+}
+
+// ===========================================================================
+// Donor program (identity-restricted)
+// ===========================================================================
+
+enum DonorStatus {
+  SCREENING
+  ELIGIBLE
+  INELIGIBLE
+  ACTIVE
+  INACTIVE
+}
+
+model DonorProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  donorCode      String   @unique
+  status         DonorStatus @default(SCREENING)
+  sex            Sex      @default(UNKNOWN)
+  age            Int?
+  // identity fields intentionally restricted
+  anonymousRef   String?
+  screening      Json?
+  eligibility    Boolean  @default(false)
+  consentSignedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+// ===========================================================================
+// Human resources
+// ===========================================================================
+
+model StaffProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  userId         String?  @unique @db.Uuid
+  employeeNumber String?
+  jobTitle       String?
+  department     String?
+  qualification  String?
+  licenseNumber  String?
+  licenseExpiry  DateTime?
+  joinedAt       DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId])
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  userId         String   @db.Uuid
+  type           String   @default("annual")
+  startDate      DateTime
+  endDate        DateTime
+  reason         String?
+  status         LeaveStatus @default(PENDING)
+  approvedById   String?
+  approvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, userId])
+}
+
+// ===========================================================================
+// Audit & notifications
+// ===========================================================================
+
+model AuditEvent {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String?  @db.Uuid
+  facilityId     String?  @db.Uuid
+  actorId        String?
+  action         String
+  resourceType   String
+  resourceId     String?
+  ip             String?
+  userAgent      String?
+  reason         String?
+  before         Json?
+  after          Json?
+  timestamp      DateTime @default(now())
+
+  @@index([organizationId, timestamp])
+  @@index([organizationId, resourceType, resourceId])
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  READ
+}
+
+model Notification {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  userId         String?
+  type           String   @default("general") // general | appointment_reminder | result_released | invoice | system
+  channel        String?  // in_app | email | sms | whatsapp
+  subject        String?
+  body           String?  @db.Text
+  data           Json?
+  readAt         DateTime?
+  status         NotificationStatus @default(QUEUED)
+  createdAt      DateTime @default(now())
+
+  @@index([organizationId, userId])
+}

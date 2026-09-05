@@ -1,0 +1,8 @@
+{
+  "root": true,
+  "extends": ["@ficms/eslint-config", "next/core-web-vitals"],
+  "ignorePatterns": [".next", "node_modules", "next-env.d.ts"],
+  "rules": {
+    "@next/next/no-img-element": "warn"
+  }
+}
