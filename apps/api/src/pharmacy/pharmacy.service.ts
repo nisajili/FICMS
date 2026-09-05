@@ -109,7 +109,7 @@ export class PharmacyService {
     if (presc.status !== 'VERIFIED') {
       throw new ConflictException('Prescription must be verified before dispensing.');
     }
-    const item = presc.items.find((i) => i.id === dto.prescriptionItemId);
+    const item = presc.items.find((i: any) => i.id === dto.prescriptionItemId);
     if (!item) throw new NotFoundException('Prescription item not found.');
 
     const remaining = Number(item.quantity) - Number(item.issuedQuantity);

@@ -34,7 +34,7 @@ async function deliver(job: { name: string; data: Record<string, unknown> }) {
         data: { appointmentId, sentAt: new Date().toISOString() },
         status: 'SENT',
       },
-    }).catch((e) => console.warn('Reminder write failed:', e.message));
+    }).catch((e: Error) => console.warn('Reminder write failed:', e.message));
   }
 
   console.log(`[worker] processed ${job.name}`);

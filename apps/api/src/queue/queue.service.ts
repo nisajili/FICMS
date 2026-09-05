@@ -36,7 +36,7 @@ export class NotificationsQueueService {
         data: job.data as object,
         status: 'QUEUED',
       },
-    }).catch((e) => this.logger.error(`Failed to persist in-app notification: ${e.message}`));
+    }).catch((e: Error) => this.logger.error(`Failed to persist in-app notification: ${e.message}`));
 
     try {
       await this.queue.add(job.type, job, { jobId: `${job.type}:${job.organizationId}:${Date.now()}` });

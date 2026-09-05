@@ -39,8 +39,18 @@ operator (see below).
 - **Manage clinic domains** and subdomains (routing is per-org).
 - **Monitor platform health** (`/api/v1/health`, `/healthz`) and usage
   statistics — platform stats never expose patient-identifiable data.
-- **Manage authorised technical-support (break-glass) access** — requires a
-  reason, a time limit, and writes an audit event.
+- **Manage authorised technical-support (break-glass) access** via
+  `POST /api/v1/admin/break-glass/requests`. A request requires a specific
+  `organizationId`, a `reason` (min 8 chars), and a bounded `durationMinutes`
+  (defaults to `BREAK_GLASS_MAX_MINUTES`, capped at 120). The request must be
+  **approved by a second platform administrator** (`POST .../requests/:id/approve`)
+  before any clinical data is visible. Grants auto-expire after their window,
+  can be revoked (`POST .../requests/:id/revoke`), and every request, approval,
+  revocation and clinical read is written to the immutable audit trail.
+- **Read an emergency clinical summary** with `GET /api/v1/admin/break-glass/organizations/:organizationId/emergency`,
+  but only while an approved, unexpired grant is active. The response is a
+  *bounded* snapshot (patients, recent results, active prescriptions) — it does
+  not expose the full clinical API to platform admins.
 - **Review platform audit events.**
 
 ## Troubleshooting

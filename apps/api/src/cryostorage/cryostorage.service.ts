@@ -60,7 +60,7 @@ export class CryostorageService {
       label: dto.label,
     };
     // Composite unique prevents two positions in the same physical slot.
-    const position = await this.prisma.cryoPosition.create({ data: posArgs }).catch((e) => {
+    const position = await this.prisma.cryoPosition.create({ data: posArgs }).catch((e: any) => {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         throw new ConflictException('A storage position already exists at that physical location.');
       }

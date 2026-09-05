@@ -28,6 +28,8 @@ export interface AppConfig {
   paymentProvider: string;
   paymentWebhookSecret?: string;
   logLevel: string;
+  breakGlassMaxMinutes: number;
+  breakGlassAllowSelfApprove: boolean;
 }
 
 @Global()
@@ -74,6 +76,8 @@ export interface AppConfig {
           paymentProvider: parsed.PAYMENT_PROVIDER,
           paymentWebhookSecret: parsed.PAYMENT_WEBHOOK_SECRET,
           logLevel: parsed.LOG_LEVEL,
+          breakGlassMaxMinutes: parsed.BREAK_GLASS_MAX_MINUTES,
+          breakGlassAllowSelfApprove: parsed.BREAK_GLASS_ALLOW_SELF_APPROVE ?? false,
         };
       },
     },

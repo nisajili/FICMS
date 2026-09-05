@@ -43,6 +43,12 @@ export const apiEnvSchema = commonEnv.extend({
   EMAIL_PROVIDER: z.string().default('console'),
   PAYMENT_PROVIDER: z.string().default('offline'),
   PAYMENT_WEBHOOK_SECRET: z.string().optional(),
+  // Break-glass emergency access (platform-admin clinical access).
+  BREAK_GLASS_MAX_MINUTES: z.coerce.number().default(60),
+  BREAK_GLASS_ALLOW_SELF_APPROVE: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 export const webEnvSchema = commonEnv.extend({

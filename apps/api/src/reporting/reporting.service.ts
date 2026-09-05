@@ -26,7 +26,7 @@ export class ReportingService {
       byStatus[c.status] = (byStatus[c.status] ?? 0) + 1;
     }
     // Denominator explicitly stated (total cycles).
-    return { total, denominatorNote: 'Denominator = total cycles in period', outcomes, byStatus, embryoTotals: cycles.reduce((a, c) => a + c.embryos.length, 0) };
+    return { total, denominatorNote: 'Denominator = total cycles in period', outcomes, byStatus, embryoTotals: cycles.reduce((a: number, c: any) => a + c.embryos.length, 0) };
   }
 
   async financialSummary(user: SessionUser, r: DateRange) {
@@ -58,7 +58,7 @@ export class ReportingService {
       this.prisma.patient.count({ where: { organizationId: org } }),
       this.prisma.inventoryItem.findMany({ where: { organizationId: org } }),
     ]);
-    const lowStockItems = lowStock.filter((i) => Number(i.quantityOnHand) <= Number(i.minimumStock));
+    const lowStockItems = lowStock.filter((i: any) => Number(i.quantityOnHand) <= Number(i.minimumStock));
     return { appointments, patients, lowStockCount: lowStockItems.length, note: 'Definitions captured alongside each metric.' };
   }
 
@@ -66,6 +66,6 @@ export class ReportingService {
     // CSV-ready rows (no PHI in the aggregate export; patient counts by segment).
     const org = user.organizationId;
     const cycles = await this.prisma.cycle.findMany({ where: { organizationId: org ?? undefined }, select: { treatmentType: true, status: true, outcome: true } });
-    return cycles.map((c) => ({ treatmentType: c.treatmentType, status: c.status, outcome: c.outcome ?? '' }));
+    return cycles.map((c: any) => ({ treatmentType: c.treatmentType, status: c.status, outcome: c.outcome ?? '' }));
   }
 }

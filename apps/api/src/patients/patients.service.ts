@@ -156,7 +156,7 @@ export class PatientsService {
       where: { patientId, organizationId: user.organizationId ?? undefined, active: true },
       include: { patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } } },
     });
-    return rows.map((r) => r.patient);
+    return rows.map((r: any) => r.patient);
   }
 
   // ---------------------------------------------------------------------------

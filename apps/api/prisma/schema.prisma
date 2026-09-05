@@ -1257,3 +1257,33 @@ model Notification {
 
   @@index([organizationId, userId])
 }
+
+// ===========================================================================
+// Break-glass emergency access (platform administrator clinical access)
+// ===========================================================================
+
+enum BreakGlassStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model BreakGlassGrant {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  requestedById  String           @db.Uuid
+  approvedById   String?          @db.Uuid
+  revokedById    String?          @db.Uuid
+  reason         String           @db.Text
+  status         BreakGlassStatus @default(PENDING)
+  requestedAt    DateTime         @default(now())
+  approvedAt     DateTime?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([organizationId, status])
+  @@index([requestedById])
+}

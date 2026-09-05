@@ -113,7 +113,7 @@ export class InventoryService {
     const items = await this.prisma.inventoryItem.findMany({
       where: { organizationId: user.organizationId ?? undefined },
     });
-    return items.filter((i) => Number(i.quantityOnHand) <= Number(i.minimumStock));
+    return items.filter((i: any) => Number(i.quantityOnHand) <= Number(i.minimumStock));
   }
 
   async movements(itemId: string, user: SessionUser) {
