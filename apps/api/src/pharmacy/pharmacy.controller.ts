@@ -41,6 +41,16 @@ export class PharmacyController {
     return this.service.createPrescription(dto, user);
   }
 
+  @Get('prescriptions')
+  @RequirePermissions('pharmacy:view')
+  @ApiOperation({ summary: 'List prescriptions (optional patient/status filter)' })
+  listPrescriptions(
+    @Query() q: { page?: number; pageSize?: number; status?: string; patientId?: string },
+    @CurrentUser() user: SessionUser,
+  ) {
+    return this.service.listPrescriptions(q, user);
+  }
+
   @Get('prescriptions/:id')
   @RequirePermissions('pharmacy:view')
   @ApiOperation({ summary: 'Get a prescription' })

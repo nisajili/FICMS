@@ -105,6 +105,16 @@ export const inventory = {
   create: (body: Record<string, unknown>) => api.post('/inventory/items', body),
 };
 
+export const pharmacy = {
+  medications: (q: { page?: number; pageSize?: number; search?: string }) => api.get('/pharmacy/medications', q),
+  createMedication: (body: Record<string, unknown>) => api.post('/pharmacy/medications', body),
+  prescriptions: (q: { page?: number; pageSize?: number; status?: string; patientId?: string }) =>
+    api.get<any[]>('/pharmacy/prescriptions', q),
+  createPrescription: (body: Record<string, unknown>) => api.post('/pharmacy/prescriptions', body),
+  verify: (id: string, verified: boolean) => api.post(`/pharmacy/prescriptions/${id}/verify`, { verified }),
+  dispense: (id: string, body: Record<string, unknown>) => api.post(`/pharmacy/prescriptions/${id}/dispense`, body),
+};
+
 export const clinicalNotes = {
   list: (q: { page?: number; pageSize?: number; patientId?: string; category?: string }) =>
     api.get<any[]>('/clinical-notes', q),

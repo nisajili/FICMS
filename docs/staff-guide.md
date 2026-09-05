@@ -53,6 +53,9 @@ you work.
   adjust stock.
 - **Cryostorage**: create tanks, add positions, store items (collision-checked),
   log temperatures, and release items with a double-witness verification.
+- **Pharmacy**: maintain the medication catalogue, prescribe, verify, and dispense.
+  Dispensing deducts linked inventory transactionally and prevents over-dispensing
+  beyond the prescribed quantity.
 
 ## Settings (administrators)
 

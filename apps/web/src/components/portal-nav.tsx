@@ -15,6 +15,7 @@ import {
   Snowflake,
   Building2,
   FileText,
+  Pill,
 } from 'lucide-react';
 import { cn } from '@ficms/ui';
 import { auth } from '@/lib/queries';
@@ -28,6 +29,7 @@ const nav = [
   { href: '/portal/lab', label: 'Laboratory', icon: FlaskConical },
   { href: '/portal/notes', label: 'Clinical Notes', icon: FileText },
   { href: '/portal/billing', label: 'Billing', icon: CreditCard },
+  { href: '/portal/pharmacy', label: 'Pharmacy', icon: Pill },
   { href: '/portal/inventory', label: 'Inventory', icon: Package },
   { href: '/portal/cryostorage', label: 'Cryostorage', icon: Snowflake },
   { href: '/portal/settings', label: 'Settings', icon: Settings },

@@ -127,7 +127,7 @@ export class PharmacyService {
       }
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx: any) => {
       const newIssued = Number(item.issuedQuantity) + dto.quantity;
       const status = newIssued >= Number(item.quantity) ? 'DISPENSED' : 'PARTIALLY_DISPENSED';
       await tx.prescriptionItem.update({ where: { id: item.id }, data: { issuedQuantity: newIssued } });
@@ -168,5 +168,34 @@ export class PharmacyService {
     });
     if (!presc) throw new NotFoundException('Prescription not found.');
     return presc;
+  }
+
+  /** List prescriptions for the organisation, optionally filtered by patient/status. */
+  async listPrescriptions(
+    q: { page?: number; pageSize?: number; status?: string; patientId?: string },
+    user: SessionUser,
+  ) {
+    const org = user.organizationId;
+    if (!org) return { data: [], meta: { page: 1, pageSize: 0, total: 0, totalPages: 0 } };
+    const { page, pageSize, skip, take } = parsePagination(q);
+    const where: Record<string, unknown> = { organizationId: org };
+    if (q.status) where.status = q.status;
+    if (q.patientId) where.patientId = q.patientId;
+
+    const [items, total] = await Promise.all([
+      this.prisma.prescription.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take,
+        include: {
+          items: true,
+          patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } },
+        },
+      }),
+      this.prisma.prescription.count({ where }),
+    ]);
+
+    return toPaginated(items, total, { page, pageSize });
   }
 }
