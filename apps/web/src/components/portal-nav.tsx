@@ -14,6 +14,7 @@ import {
   LogOut,
   Snowflake,
   Building2,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@ficms/ui';
 import { auth } from '@/lib/queries';
@@ -25,6 +26,7 @@ const nav = [
   { href: '/portal/appointments', label: 'Appointments', icon: CalendarCheck },
   { href: '/portal/cycles', label: 'Cycles', icon: FlaskConical },
   { href: '/portal/lab', label: 'Laboratory', icon: FlaskConical },
+  { href: '/portal/notes', label: 'Clinical Notes', icon: FileText },
   { href: '/portal/billing', label: 'Billing', icon: CreditCard },
   { href: '/portal/inventory', label: 'Inventory', icon: Package },
   { href: '/portal/cryostorage', label: 'Cryostorage', icon: Snowflake },

@@ -19,6 +19,9 @@ review; this repo does not claim certification.**
 - [x] Patient self-scope only; internal/sensitive records gated.
 - [x] Field-level & sensitive-record restrictions (counseling, donor identity).
 - [x] Break-glass emergency access audited (reason, time limit, audit event).
+- [x] Signed clinical notes are immutable; corrections create a new revision
+      (version + 1) linked via the immutable chain — the original is never
+      overwritten (`/api/v1/clinical-notes/:id/correct`).
 - [x] Platform admins have no clinical read access by default.
 
 ## Data protection

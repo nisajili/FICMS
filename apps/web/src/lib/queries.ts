@@ -104,3 +104,12 @@ export const inventory = {
   lowStock: () => api.get('/inventory/items/low-stock'),
   create: (body: Record<string, unknown>) => api.post('/inventory/items', body),
 };
+
+export const clinicalNotes = {
+  list: (q: { page?: number; pageSize?: number; patientId?: string; category?: string }) =>
+    api.get<any[]>('/clinical-notes', q),
+  get: (id: string) => api.get<any>(`/clinical-notes/${id}`),
+  create: (body: Record<string, unknown>) => api.post<any>('/clinical-notes', body),
+  sign: (id: string) => api.post<any>(`/clinical-notes/${id}/sign`, {}),
+  correct: (id: string, body: Record<string, unknown>) => api.post<any>(`/clinical-notes/${id}/correct`, body),
+};

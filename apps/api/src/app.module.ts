@@ -30,6 +30,7 @@ import { QueueModule } from './queue/queue.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BreakGlassModule } from './break-glass/break-glass.module';
+import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { BreakGlassModule } from './break-glass/break-glass.module';
     NotificationsModule,
     PaymentsModule,
     BreakGlassModule,
+    ClinicalNotesModule,
   ],
   providers: [
     // Order matters: resolve tenant scope first, then permissions.
