@@ -27,6 +27,8 @@ import { ReportingModule } from './reporting/reporting.module';
 import { UsersModule } from './users/users.module';
 import { RecordsModule } from './records/records.module';
 import { QueueModule } from './queue/queue.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -55,6 +57,8 @@ import { QueueModule } from './queue/queue.module';
     UsersModule,
     RecordsModule,
     QueueModule,
+    NotificationsModule,
+    PaymentsModule,
   ],
   providers: [
     // Order matters: resolve tenant scope first, then permissions.

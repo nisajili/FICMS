@@ -9,6 +9,9 @@ import {
   FlaskConical,
   CreditCard,
   User,
+  FileSignature,
+  ListChecks,
+  FileText,
   LogOut,
   Building2,
 } from 'lucide-react';
@@ -19,7 +22,10 @@ import { BrandTheme } from './theme-toggle';
 const nav = [
   { href: '/patient-portal/dashboard', label: 'My Care', icon: LayoutDashboard },
   { href: '/patient-portal/appointments', label: 'Appointments', icon: CalendarCheck },
+  { href: '/patient-portal/timeline', label: 'Treatment Timeline', icon: ListChecks },
   { href: '/patient-portal/results', label: 'Results', icon: FlaskConical },
+  { href: '/patient-portal/consents', label: 'Consents', icon: FileSignature },
+  { href: '/patient-portal/documents', label: 'Documents', icon: FileText },
   { href: '/patient-portal/billing', label: 'Billing', icon: CreditCard },
   { href: '/patient-portal/profile', label: 'My Details', icon: User },
 ];

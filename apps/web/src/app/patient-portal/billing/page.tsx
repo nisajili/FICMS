@@ -4,9 +4,33 @@ import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, Badge, Spinner, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell, Button } from '@ficms/ui';
 import { self } from '@/lib/queries';
+import { InvoiceDocument } from '@/components/invoice-document';
 
 export default function PatientBilling() {
   const { data: invoices, isLoading } = useQuery({ queryKey: ['me', 'invoices'], queryFn: self.invoices });
+  const [selected, setSelected] = React.useState<any>(null);
+
+  if (selected) {
+    return (
+      <InvoiceDocument
+        invoice={{
+          invoiceNumber: selected.invoiceNumber,
+          patient: { givenName: selected.patient?.givenName, familyName: selected.patient?.familyName, medicalRecordNumber: selected.patient?.medicalRecordNumber },
+          currency: selected.currency,
+          issuedAt: selected.createdAt,
+          dueDate: selected.dueDate,
+          lines: selected.lineItems?.map((l: any) => ({ description: l.description, quantity: l.quantity, unitPrice: Number(l.unitPrice), totalPrice: Number(l.totalPrice), taxRate: Number(l.taxRate) })) ?? [],
+          subtotal: Number(selected.subtotal),
+          taxTotal: Number(selected.taxTotal),
+          total: Number(selected.total),
+          amountPaid: Number(selected.amountPaid),
+          amountDue: Number(selected.amountDue),
+          status: selected.status,
+        }}
+        onClose={() => setSelected(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -30,7 +54,7 @@ export default function PatientBilling() {
                       <TableCell className="font-medium">{money(inv.amountDue, inv.currency)}</TableCell>
                       <TableCell><Badge tone={invTone(inv.status)}>{inv.status.replace('_', ' ')}</Badge></TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" onClick={() => window.print()}>Print</Button>
+                        <Button size="sm" variant="outline" onClick={() => setSelected(inv)}>View</Button>
                       </TableCell>
                     </TableRow>
                   ))}

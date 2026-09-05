@@ -5,7 +5,7 @@ import {
   Inject,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import type { AppConfig } from '../config/config.module';
 
 /** Exposed so feature services can type tenant-scoped models. */
@@ -14,6 +14,19 @@ export interface TenantContext {
   facilityId?: string;
   departmentId?: string;
   isPlatformAdmin?: boolean;
+}
+
+/**
+ * Structural subset of Prisma's middleware params. Defined locally so the
+ * service compiles without requiring the generated client types (which only
+ * exist after `prisma generate`).
+ */
+export interface PrismaMiddlewareParams {
+  model?: string;
+  action: string;
+  args?: unknown;
+  dataPath?: string[];
+  runInTransaction?: boolean;
 }
 
 /**
@@ -112,8 +125,8 @@ export class PrismaService
   ]);
 
   private async tenantWriteGuard(
-    params: Prisma.MiddlewareParams,
-    next: (params: Prisma.MiddlewareParams) => Promise<unknown>,
+    params: PrismaMiddlewareParams,
+    next: (params: PrismaMiddlewareParams) => Promise<unknown>,
   ): Promise<unknown> {
     const model = String(params.model ?? '');
     const op = params.action;

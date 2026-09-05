@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Patch,
   Post,
   UseGuards,
@@ -78,5 +79,40 @@ export class PatientSelfController {
   @ApiOperation({ summary: 'My prescriptions' })
   prescriptions(@CurrentUser() user: SessionUser) {
     return this.service.selfPrescriptions(user);
+  }
+
+  @Get('consents')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'My consent documents (status)' })
+  consents(@CurrentUser() user: SessionUser) {
+    return this.service.selfConsents(user);
+  }
+
+  @Get('consents/:id')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'Review a consent document' })
+  consent(@Param('id') id: string, @CurrentUser() user: SessionUser) {
+    return this.service.selfConsent(id, user);
+  }
+
+  @Post('consents/:id/sign')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'Sign a consent document' })
+  signConsent(@Param('id') id: string, @CurrentUser() user: SessionUser) {
+    return this.service.signSelfConsent(id, user);
+  }
+
+  @Get('documents')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'My released documents' })
+  documents(@CurrentUser() user: SessionUser) {
+    return this.service.selfDocuments(user);
+  }
+
+  @Get('timeline')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'My treatment timeline (cycle stages)' })
+  timeline(@CurrentUser() user: SessionUser) {
+    return this.service.selfTimeline(user);
   }
 }

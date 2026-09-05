@@ -239,7 +239,12 @@ export class PatientsService {
     const patient = await this.requireSelfPatient(user);
     return this.prisma.invoice.findMany({
       where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
-      include: { lineItems: true, payments: true, installmentPlans: true },
+      include: {
+        lineItems: true,
+        payments: true,
+        installmentPlans: true,
+        patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -278,5 +283,93 @@ export class PatientsService {
     });
     await this.audit.record({ action: 'patient.request_appointment', resourceType: 'appointment', resourceId: appointment.id, after: { code } }, user);
     return appointment;
+  }
+
+  /** List consents a patient may review/sign; never expose internal consent content content. */
+  async selfConsents(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    return this.prisma.consent.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      select: { id: true, title: true, templateKey: true, status: true, signedAt: true, version: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Get a signed/reviewable consent document for the patient (returns content). */
+  async selfConsent(id: string, user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    const consent = await this.prisma.consent.findFirst({
+      where: { id, patientId: patient.id, organizationId: user.organizationId ?? undefined },
+    });
+    if (!consent) throw new NotFoundException('Consent not found.');
+    return consent;
+  }
+
+  /** Patient signs a consent (moves PENDING_SIGNATURE → SIGNED). */
+  async signSelfConsent(id: string, user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    const consent = await this.prisma.consent.findFirst({
+      where: { id, patientId: patient.id, organizationId: user.organizationId ?? undefined },
+    });
+    if (!consent) throw new NotFoundException('Consent not found.');
+    if (consent.status === 'SIGNED' || consent.status === 'WITNESSED') {
+      return { ...consent, alreadySigned: true };
+    }
+    const updated = await this.prisma.consent.update({
+      where: { id },
+      data: {
+        status: 'SIGNED',
+        signedAt: new Date(),
+        signedByName: `${patient.givenName} ${patient.familyName}`,
+        signedById: user.id,
+        version: { increment: 1 },
+      },
+    });
+    await this.audit.record(
+      { action: 'consent.patient_sign', resourceType: 'patient', resourceId: patient.id, after: { consentId: id, status: 'SIGNED' } },
+      user,
+    );
+    return updated;
+  }
+
+  /** Patient-approved documents (released to them); never internal files. */
+  async selfDocuments(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    // Only approved/consent-related document types are surfaced; internal
+    // clinical documents (SCAN/REPORT) are not exposed without clinic release.
+    return this.prisma.patientDocument.findMany({
+      where: {
+        patientId: patient.id,
+        organizationId: user.organizationId ?? undefined,
+        type: { in: ['CONSENT', 'OTHER'] },
+      },
+      select: { id: true, type: true, fileName: true, mimeType: true, sizeBytes: true, description: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Patient treatment timeline (their cycles' stages/events, no clinical notes). */
+  async selfTimeline(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    const cycles = await this.prisma.cycle.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      select: {
+        id: true,
+        cycleNumber: true,
+        treatmentType: true,
+        status: true,
+        startDate: true,
+        triggerAt: true,
+        retrievalAt: true,
+        transferAt: true,
+        outcome: true,
+        events: {
+          select: { id: true, eventType: true, title: true, scheduledAt: true, completedAt: true },
+          orderBy: { scheduledAt: 'asc' },
+        },
+      },
+      orderBy: { startDate: 'asc' },
+    });
+    return cycles;
   }
 }

@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@prisma/client": ["/tmp/prisma-stub/index.d.ts"] }
+  }
+}

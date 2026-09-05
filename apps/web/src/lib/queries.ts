@@ -15,6 +15,11 @@ export const self = {
   results: () => api.get<any[]>('/me/results'),
   invoices: () => api.get<any[]>('/me/invoices'),
   prescriptions: () => api.get<any[]>('/me/prescriptions'),
+  consents: () => api.get<any[]>('/me/consents'),
+  consent: (id: string) => api.get<any>(`/me/consents/${id}`),
+  signConsent: (id: string) => api.post<any>(`/me/consents/${id}/sign`, {}),
+  documents: () => api.get<any[]>('/me/documents'),
+  timeline: () => api.get<any[]>('/me/timeline'),
 };
 
 export const dashboard = {
