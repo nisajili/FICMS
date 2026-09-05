@@ -80,11 +80,15 @@ andrology/embryology, cryostorage, ultrasound, nursing, general lab, pharmacy,
 inventory, billing, counseling, donor, HR, reporting, admin.
 
 ### C. Patient Portal
-Invitation or approved self-registration; update permitted profile; request/view
-appointments; complete forms; view treatment timeline; sign consent; view
-released results; view invoices & installments; make supported payments;
-download receipts; control notifications. Never exposes internal clinical
-notes, counseling, donor identity, embryology notes, HR, or unreleased results.
+Located under `/patient-portal` (distinct from the staff `/portal`). Features:
+invitation or approved self-registration; update permitted profile; request/view
+appointments; view treatment timeline; sign consent; view released results;
+view invoices & installments; make supported payments; download receipts;
+control notifications. The backend exposes a self-service API under `/me`
+(`GET/PATCH /me`, `/me/appointments`, `/me/results`, `/me/invoices`,
+`/me/prescriptions`) guarded by `patient:view_self`. Never exposes internal
+clinical notes, counseling, donor identity, embryology notes, HR, or
+unreleased results.
 
 ## 5. Technology decisions
 

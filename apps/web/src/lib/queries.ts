@@ -8,6 +8,15 @@ export const auth = {
   logout: () => api.post<{ loggedOut: boolean }>('/auth/logout', {}),
 };
 
+export const self = {
+  profile: () => api.get<any>('/me'),
+  updateProfile: (body: Record<string, unknown>) => api.patch<any>('/me', body),
+  appointments: () => api.get<any[]>('/me/appointments'),
+  results: () => api.get<any[]>('/me/results'),
+  invoices: () => api.get<any[]>('/me/invoices'),
+  prescriptions: () => api.get<any[]>('/me/prescriptions'),
+};
+
 export const dashboard = {
   stats: () => api.get<DashboardStats>('/dashboard/stats'),
   today: () => api.get<Appointment[]>('/dashboard/today-appointments'),

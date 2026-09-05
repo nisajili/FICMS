@@ -1,11 +1,8 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { StateMachine, assertVersion } from '../common/state-machine';
-import { LAB_RESULT_TRANSITIONS } from '@ficms/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { RecordNumberService } from '../records/record-number.service';
@@ -18,10 +15,7 @@ import {
   VerifyResultDto,
   CreateLabTestDto,
   LabQueryDto,
-  LabOrderStatusDto,
 } from './dto/lab.dto';
-
-const sm = new StateMachine(LAB_RESULT_TRANSITIONS as Record<string, readonly string[]>, 'lab order');
 
 @Injectable()
 export class LabService {
@@ -63,12 +57,6 @@ export class LabService {
     });
     await this.audit.record({ action: 'lab.create_order', resourceType: 'lab', resourceId: order.id, after: { orderNumber } }, user);
     return order;
-  }
-
-  transition(id: string, dto: LabOrderStatusDto, user: SessionUser) {
-    sm.assertTransition(dto.status.toUpperCase() as never, dto.status.toUpperCase() as never);
-    // handled per-state in dedicated methods; kept minimal
-    throw new ConflictException('Use a specific action (collect/access/process/verify/release).');
   }
 
   async collectSpecimen(orderId: string, dto: CreateSpecimenDto, user: SessionUser) {

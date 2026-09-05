@@ -39,3 +39,6 @@ test-results/
 # Temp
 tmp/
 .tmp/
+
+# TypeScript incremental
+*.tsbuildinfo

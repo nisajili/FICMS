@@ -13,7 +13,8 @@ driven by per-organisation configuration in the database.
 ## What this repo contains
 
 ```
-apps/web       Next.js 14 (App Router) — Platform Admin, Staff, Patient portals
+apps/web       Next.js 14 (App Router) — Staff portal (/portal), Patient portal
+               (/patient-portal), and Platform Admin functions
 apps/api       NestJS 10 — versioned REST API under /api/v1 + OpenAPI/Swagger
 apps/worker    BullMQ background worker (reminders, notifications, reports)
 packages/ui    Shared white-label UI primitives (Tailwind + shadcn-style)

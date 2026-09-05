@@ -158,4 +158,125 @@ export class PatientsService {
     });
     return rows.map((r) => r.patient);
   }
+
+  // ---------------------------------------------------------------------------
+  // Patient self-service (guarded by `patient:view_self`; patients may only
+  // ever read/update data belonging to the patient linked to their account).
+  // ---------------------------------------------------------------------------
+
+  private async requireSelfPatient(user: SessionUser) {
+    if (!user.patientId) {
+      throw new NotFoundException('No patient record is linked to this account.');
+    }
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: user.patientId, organizationId: user.organizationId ?? undefined },
+    });
+    if (!patient) throw new NotFoundException('Patient record not found.');
+    return patient;
+  }
+
+  async getSelf(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    // Never expose internal clinical data to the patient. Return safe profile
+    // fields plus their linked partner (reduced) and consents status only.
+    const partners = await this.listPartners(patient.id, user);
+    const consents = await this.prisma.consent.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      select: { id: true, title: true, status: true, signedAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+    return { ...patient, partners, consents };
+  }
+
+  async updateSelf(dto: UpdatePatientDto, user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    const updated = await this.prisma.patient.update({
+      where: { id: patient.id },
+      data: {
+        email: dto.email,
+        phone: dto.phone,
+        address: dto.address,
+        city: dto.city,
+        preferredName: dto.preferredName,
+        emergencyName: dto.emergencyName,
+        emergencyPhone: dto.emergencyPhone,
+        // Patients may not change identity-critical fields (given/family name,
+        // date of birth, sex, MRN) through the self-service endpoint.
+        version: { increment: 1 },
+      },
+    });
+    await this.audit.record({ action: 'patient.self_update', resourceType: 'patient', resourceId: patient.id, after: { updated: true } }, user);
+    return updated;
+  }
+
+  async selfAppointments(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    return this.prisma.appointment.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      include: {
+        patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } },
+      },
+      orderBy: { scheduledStart: 'asc' },
+    });
+  }
+
+  async selfResults(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    // Only show results from orders that have been RELEASED to the patient.
+    const results = await this.prisma.labResult.findMany({
+      where: {
+        organizationId: user.organizationId ?? undefined,
+        labOrder: { patientId: patient.id, status: 'RELEASED' },
+      },
+      include: { labOrder: { select: { id: true, orderNumber: true, releasedAt: true, status: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return results;
+  }
+
+  async selfInvoices(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    return this.prisma.invoice.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      include: { lineItems: true, payments: true, installmentPlans: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async selfPrescriptions(user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    return this.prisma.prescription.findMany({
+      where: { patientId: patient.id, organizationId: user.organizationId ?? undefined },
+      include: { items: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** A patient requests an appointment; the clinic confirms/schedules it. */
+  async requestSelfAppointment(dto: { scheduledStart?: string; serviceType?: string }, user: SessionUser) {
+    const patient = await this.requireSelfPatient(user);
+    const org = user.organizationId;
+    if (!org) throw new BadRequestException('Organisation context required.');
+    const scheduledStart = dto.scheduledStart ? new Date(dto.scheduledStart) : new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const code = await this.records.next(
+      () => this.prisma.appointment.count({ where: { organizationId: org } }),
+      { prefix: 'APT' },
+    );
+    const appointment = await this.prisma.appointment.create({
+      data: {
+        organizationId: org,
+        code,
+        patientId: patient.id,
+        facilityId: user.facilityId,
+        scheduledStart,
+        scheduledEnd: new Date(scheduledStart.getTime() + 60 * 60 * 1000),
+        serviceType: dto.serviceType,
+        status: 'REQUESTED',
+        source: 'patient_portal',
+      },
+    });
+    await this.audit.record({ action: 'patient.request_appointment', resourceType: 'appointment', resourceId: appointment.id, after: { code } }, user);
+    return appointment;
+  }
 }
