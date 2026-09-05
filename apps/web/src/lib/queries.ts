@@ -76,6 +76,27 @@ export const admin = {
   users: (q: { page?: number; pageSize?: number; search?: string }) => api.get('/users', q),
   inviteUser: (body: Record<string, unknown>) => api.post('/users/invite', body),
   permissions: () => api.get('/organizations/permissions'),
+
+  // Platform-admin organisation management.
+  organizations: (q: { page?: number; pageSize?: number; search?: string }) =>
+    api.get<any[]>('/organizations', q),
+  organization: (id: string) => api.get<any>(`/organizations/${id}`),
+  createOrg: (body: Record<string, unknown>) => api.post<any>('/organizations', body),
+  setOrgStatus: (id: string, status: string) => api.patch<any>(`/organizations/${id}/status`, { status }),
+
+  // Break-glass emergency access.
+  breakGlass: {
+    list: (q: { page?: number; pageSize?: number; status?: string; organizationId?: string }) =>
+      api.get<any[]>('/admin/break-glass/requests', q),
+    request: (body: Record<string, unknown>) => api.post<any>('/admin/break-glass/requests', body),
+    approve: (id: string) => api.post<any>(`/admin/break-glass/requests/${id}/approve`, {}),
+    revoke: (id: string) => api.post<any>(`/admin/break-glass/requests/${id}/revoke`, {}),
+    emergency: (organizationId: string) => api.get<any>(`/admin/break-glass/organizations/${organizationId}/emergency`),
+  },
+
+  // Immutable audit trail (platform admins may view across orgs).
+  auditEvents: (q: { page?: number; pageSize?: number; action?: string; resourceType?: string }) =>
+    api.get<any[]>('/audit/events', q),
 };
 
 export const inventory = {

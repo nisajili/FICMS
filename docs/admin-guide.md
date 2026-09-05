@@ -3,8 +3,10 @@
 ## Overview
 
 The administrator role configures the clinic and its users. In a multi-clinic
-deployment, there is also a **Platform Administration** function for the
-operator (see below).
+deployment, there is also a **Platform Administration** portal for the
+operator, accessible at `/admin` (see below). It is restricted to the
+`platform_admin` role and contains a platform overview, organisation
+management, break-glass access control, and an immutable audit trail.
 
 ## Clinic administration
 

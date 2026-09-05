@@ -42,7 +42,7 @@ data isolation.
 ## 2. Repository structure
 
 ```
-apps/web        Next.js App Router; three portals under /portal/* & /login
+apps/web        Next.js App Router; three portals: /portal/* (staff), /patient-portal/* (patient), /admin/* (platform admin)
 apps/api        NestJS modules under src/<module>; versioned API
 apps/worker     BullMQ consumer for asynchronous tasks
 packages/ui     Shared React primitives (Button, Card, Table, Badge…)

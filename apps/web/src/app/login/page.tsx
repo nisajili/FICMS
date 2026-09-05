@@ -9,6 +9,13 @@ import { auth } from '@/lib/queries';
 import { ApiClientError, api } from '@/lib/api';
 import { BrandTheme } from '@/components/theme-toggle';
 
+const portalFor = (user?: { role?: string } | null): string => {
+  if (!user) return '/portal/dashboard';
+  if (user.role === 'platform_admin') return '/admin';
+  if (user.role === 'patient') return '/patient-portal';
+  return '/portal';
+};
+
 export default function LoginPage() {
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Loading…</div>}>
@@ -33,7 +40,7 @@ function LoginInner() {
         setMfaToken(res.mfaToken ?? null);
         return null;
       }
-      router.push(params.get('next') || '/portal/dashboard');
+      router.push(params.get('next') || portalFor(res.user));
       router.refresh();
       return res.user;
     },
@@ -44,8 +51,8 @@ function LoginInner() {
 
   const verifyMfa = useMutation({
     mutationFn: async () => {
-      await api.post('/auth/mfa/verify', { mfaToken, code: mfaCode });
-      router.push('/portal/dashboard');
+      const res = await api.post<{ user?: { role?: string } }>('/auth/mfa/verify', { mfaToken, code: mfaCode });
+      router.push(portalFor(res.user));
       router.refresh();
     },
     onError: (e: unknown) => setError(e instanceof ApiClientError ? e.message : 'Invalid 2FA code.'),
