@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useOrganization } from '@/hooks/use-organization';
 
 export interface InvoiceLine {
   description: string;
@@ -29,6 +30,8 @@ export interface InvoiceData {
 
 /** Print-friendly invoice/receipt (white-label; clinic name from branding). */
 export function InvoiceDocument({ invoice, onClose }: { invoice: InvoiceData; onClose?: () => void }) {
+  const { name } = useOrganization();
+  const clinicName = invoice.clinicName || name || '{CLINIC_NAME}';
   const lines = invoice.lines ?? [];
   const subtotal = invoice.subtotal ?? lines.reduce((s, l) => s + l.totalPrice, 0);
   const taxTotal = invoice.taxTotal ?? 0;
@@ -43,7 +46,7 @@ export function InvoiceDocument({ invoice, onClose }: { invoice: InvoiceData; on
       </div>
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">{invoice.clinicName || '{CLINIC_NAME}'}</h1>
+          <h1 className="text-xl font-bold text-slate-900">{clinicName}</h1>
           <p className="text-xs text-slate-500">Fertility &amp; IVF Clinic Management System</p>
         </div>
         <div className="text-right">

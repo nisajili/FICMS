@@ -8,6 +8,7 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, FieldEr
 import { auth } from '@/lib/queries';
 import { ApiClientError, api } from '@/lib/api';
 import { BrandTheme } from '@/components/theme-toggle';
+import { useOrganization } from '@/hooks/use-organization';
 
 const portalFor = (user?: { role?: string } | null): string => {
   if (!user) return '/portal/dashboard';
@@ -32,6 +33,7 @@ function LoginInner() {
   const [error, setError] = React.useState('');
   const [mfaCode, setMfaCode] = React.useState('');
   const [mfaToken, setMfaToken] = React.useState<string | null>(null);
+  const { name } = useOrganization();
 
   const login = useMutation({
     mutationFn: async () => {

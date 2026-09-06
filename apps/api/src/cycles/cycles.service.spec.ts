@@ -93,7 +93,7 @@ describe('CyclesService', () => {
   });
 
   it('adds an event to a cycle and audits it', async () => {
-    const { service, prisma, audit } = makeService();
+    const { service, audit } = makeService();
     const event = await service.addEvent('c1', { eventType: 'SCAN', title: 'Follicle scan', scheduledAt: '2026-09-10T09:00:00Z' }, staff);
     expect(event.cycleId).toBe('c1');
     expect(event.organizationId).toBe('org-1');
