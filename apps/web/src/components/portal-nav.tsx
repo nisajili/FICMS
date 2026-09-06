@@ -16,6 +16,7 @@ import {
   Building2,
   FileText,
   Pill,
+  Microscope,
 } from 'lucide-react';
 import { cn } from '@ficms/ui';
 import { auth } from '@/lib/queries';
@@ -27,6 +28,7 @@ const nav = [
   { href: '/portal/appointments', label: 'Appointments', icon: CalendarCheck },
   { href: '/portal/cycles', label: 'Cycles', icon: FlaskConical },
   { href: '/portal/lab', label: 'Laboratory', icon: FlaskConical },
+  { href: '/portal/embryology', label: 'Embryology', icon: Microscope },
   { href: '/portal/notes', label: 'Clinical Notes', icon: FileText },
   { href: '/portal/billing', label: 'Billing', icon: CreditCard },
   { href: '/portal/pharmacy', label: 'Pharmacy', icon: Pill },

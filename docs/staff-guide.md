@@ -56,6 +56,8 @@ you work.
 - **Pharmacy**: maintain the medication catalogue, prescribe, verify, and dispense.
   Dispensing deducts linked inventory transactionally and prevents over-dispensing
   beyond the prescribed quantity.
+- **Embryology**: identify embryos per cycle, record day-by-day observations, and
+  double-witness verify transfers and freezes (see `Embryology` page under the lab).
 
 ## Settings (administrators)
 

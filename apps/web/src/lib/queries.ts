@@ -105,6 +105,16 @@ export const inventory = {
   create: (body: Record<string, unknown>) => api.post('/inventory/items', body),
 };
 
+export const embryology = {
+  embryos: (q: { page?: number; pageSize?: number; cycleId?: string; status?: string }) =>
+    api.get<any[]>('/embryology/embryos', q),
+  create: (body: Record<string, unknown>) => api.post<any>('/embryology/embryos', body),
+  observe: (id: string, body: Record<string, unknown>) => api.post<any>(`/embryology/embryos/${id}/observations`, body),
+  verifyTransfer: (id: string, body: Record<string, unknown>) => api.post<any>(`/embryology/embryos/${id}/verify-transfer`, body),
+  verifyFreeze: (id: string, body: Record<string, unknown>) => api.post<any>(`/embryology/embryos/${id}/verify-freeze`, body),
+  setStatus: (id: string, status: string) => api.patch<any>(`/embryology/embryos/${id}/status`, { status }),
+};
+
 export const pharmacy = {
   medications: (q: { page?: number; pageSize?: number; search?: string }) => api.get('/pharmacy/medications', q),
   createMedication: (body: Record<string, unknown>) => api.post('/pharmacy/medications', body),
