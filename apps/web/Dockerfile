@@ -13,6 +13,9 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @ficms/config build \
  && pnpm --filter @ficms/types build \
  && pnpm --filter @ficms/ui build
+# NEXT_PUBLIC_* are inlined at build time; configure the API origin here.
+ARG NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter @ficms/web build
 
 # ---- runtime (standalone) ----
