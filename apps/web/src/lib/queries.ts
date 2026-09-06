@@ -19,6 +19,7 @@ export const self = {
   consent: (id: string) => api.get<any>(`/me/consents/${id}`),
   signConsent: (id: string) => api.post<any>(`/me/consents/${id}/sign`, {}),
   documents: () => api.get<any[]>('/me/documents'),
+  documentDownloadUrl: (id: string) => `${API_BASE}/documents/me/${id}/download`,
   timeline: () => api.get<any[]>('/me/timeline'),
 };
 

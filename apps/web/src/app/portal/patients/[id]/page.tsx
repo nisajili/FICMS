@@ -105,8 +105,8 @@ export default function PatientRecordPage() {
     onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Create failed.'),
   });
   const signConsent = useMutation({
-    mutationFn: ({ cid, signedByName, witnessName }: { cid: string; signedByName: string; witnessName?: string }) =>
-      consentsApi.sign(cid, { signedByName, witnessName }),
+    mutationFn: ({ cid, signedByName, witnessName, evidenceKey }: { cid: string; signedByName: string; witnessName?: string; evidenceKey?: string }) =>
+      consentsApi.sign(cid, { signedByName, witnessName, evidenceKey }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['consents', id] }),
     onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Sign failed.'),
   });
@@ -142,6 +142,7 @@ export default function PatientRecordPage() {
     s === 'SIGNED' || s === 'WITNESSED' ? 'success' : s === 'REVOKED' ? 'danger' : 'warning';
   const consentLabel = (s: string): string =>
     ({ DRAFT: 'Draft', PENDING_SIGNATURE: 'Pending', SIGNED: 'Signed', WITNESSED: 'Witnessed', REVOKED: 'Revoked' }[s] ?? s);
+  const findDoc = (docId: string) => docRows.find((d: any) => d.id === docId);
 
   if (patient.isLoading) {
     return (
@@ -518,6 +519,9 @@ export default function PatientRecordPage() {
                         {(c.signedByName || c.signedAt) && (
                           <span className="text-xs text-slate-500">
                             Signed by {c.signedByName ?? '—'}{c.signedAt ? ` · ${new Date(c.signedAt).toLocaleDateString()}` : ''}
+                            {c.evidenceKey && typeof c.evidenceKey === 'string' && (
+                              <> · Evidence: {findDoc(c.evidenceKey)?.fileName ?? c.evidenceKey}</>
+                            )}
                           </span>
                         )}
                         {isEditable && !consentForm && (
@@ -561,7 +565,12 @@ export default function PatientRecordPage() {
                         onSubmit={(e) => {
                           e.preventDefault();
                           const fd = new FormData(e.currentTarget);
-                          signConsent.mutate({ cid: c.id, signedByName: String(fd.get('signedByName') ?? 'Patient'), witnessName: String(fd.get('witnessName') ?? '') || undefined });
+                          signConsent.mutate({
+                            cid: c.id,
+                            signedByName: String(fd.get('signedByName') ?? 'Patient'),
+                            witnessName: String(fd.get('witnessName') ?? '') || undefined,
+                            evidenceKey: String(fd.get('evidenceKey') ?? '') || undefined,
+                          });
                           setConsentForm(null);
                         }}>
                         <label className="flex flex-col text-xs font-medium text-slate-600">
@@ -571,6 +580,15 @@ export default function PatientRecordPage() {
                         <label className="flex flex-col text-xs font-medium text-slate-600">
                           Witness name (optional)
                           <input name="witnessName" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                        </label>
+                        <label className="flex flex-col text-xs font-medium text-slate-600">
+                          Evidence document (optional)
+                          <select name="evidenceKey" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
+                            <option value="">— none —</option>
+                            {docRows.map((d: any) => (
+                              <option key={d.id} value={d.id}>{d.fileName} ({d.type})</option>
+                            ))}
+                          </select>
                         </label>
                         <Button type="submit" size="sm" variant="outline" loading={signConsent.isPending}>Confirm sign</Button>
                       </form>

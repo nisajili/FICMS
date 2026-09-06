@@ -66,6 +66,19 @@ export class DocumentsController {
     return this.service.listForPatient(patientId, user);
   }
 
+  @Get('me/:id/download')
+  @RequirePermissions('patient:view_self')
+  @ApiOperation({ summary: 'Download one of my own released documents' })
+  async downloadSelf(@Param('id') id: string, @CurrentUser() user: SessionUser, @Res() res: Response) {
+    const result = await this.service.downloadSelf(id, user);
+    if (result.url) {
+      return res.redirect(result.url);
+    }
+    res.setHeader('Content-Type', result.mimeType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(result.fileName ?? 'document')}"`);
+    return res.send(result.buffer);
+  }
+
   @Get(':id/info')
   @RequirePermissions('patient:view')
   @ApiOperation({ summary: 'Get a document with a signed download URL' })

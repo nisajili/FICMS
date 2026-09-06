@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, Badge, Spinner, EmptyState, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@ficms/ui';
+import { Card, CardContent, Badge, Spinner, EmptyState, Button, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@ficms/ui';
 import { self } from '@/lib/queries';
 
 export default function PatientDocuments() {
@@ -19,7 +19,7 @@ export default function PatientDocuments() {
             : (
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>File</TableHead><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Uploaded</TableHead>
+                  <TableHead>File</TableHead><TableHead>Type</TableHead><TableHead>Size</TableHead><TableHead>Uploaded</TableHead><TableHead>Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {documents.map((d: any) => (
@@ -28,6 +28,11 @@ export default function PatientDocuments() {
                       <TableCell><Badge tone="info">{d.type}</Badge></TableCell>
                       <TableCell>{formatBytes(d.sizeBytes)}</TableCell>
                       <TableCell>{new Date(d.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <a href={self.documentDownloadUrl(d.id)} target="_blank" rel="noreferrer">
+                          <Button size="sm" variant="outline">Download</Button>
+                        </a>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

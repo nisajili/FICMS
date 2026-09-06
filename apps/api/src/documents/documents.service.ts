@@ -159,6 +159,38 @@ export class DocumentsService {
     return { url, mimeType: doc.mimeType, fileName: doc.fileName };
   }
 
+  /**
+   * Patient self-service download. Only the patient's own, clinic-released
+   * document types (CONSENT/OTHER — mirroring the self list) are exposed;
+   * internal clinical scans/reports are never surfaced to the patient.
+   */
+  async downloadSelf(id: string, user: SessionUser) {
+    const patientId = user.patientId;
+    if (!patientId) throw new NotFoundException('No patient record is linked to this account.');
+    const doc = await this.prisma.patientDocument.findFirst({
+      where: {
+        id,
+        patientId,
+        organizationId: user.organizationId ?? undefined,
+        type: { in: ['CONSENT', 'OTHER'] },
+      },
+    });
+    if (!doc) throw new NotFoundException('Document not found or not available to you.');
+
+    await this.audit.record(
+      { action: 'document.self_download', resourceType: 'patient_document', resourceId: doc.id, after: { fileName: doc.fileName } },
+      user,
+    );
+
+    if (this.isLocal(doc.storageKey)) {
+      const provider = await this.localProvider();
+      const buf = await provider.read!(this.localKey(doc.storageKey));
+      return { buffer: buf, mimeType: doc.mimeType, fileName: doc.fileName };
+    }
+    const url = await this.storage.getUrl(doc.storageKey, 3600);
+    return { url, mimeType: doc.mimeType, fileName: doc.fileName };
+  }
+
   async delete(id: string, user: SessionUser) {
     const org = user.organizationId;
     const doc = await this.prisma.patientDocument.findFirst({

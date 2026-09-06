@@ -142,4 +142,38 @@ describe('DocumentsService', () => {
     expect(result.mimeType).toBe('application/pdf');
     expect(storage.read).toHaveBeenCalledWith('org-1/p1/abc.pdf');
   });
+
+  it('lets a patient download only their own released (CONSENT/OTHER) document', async () => {
+    const { service, prisma, storage } = makeService();
+    prisma.patientDocument.findFirst.mockResolvedValue({
+      id: 'doc-1',
+      organizationId: 'org-1',
+      patientId: 'p1',
+      storageKey: 'org-1/p1/consent.pdf',
+      fileName: 'consent.pdf',
+      mimeType: 'application/pdf',
+      sizeBytes: 100,
+      description: null,
+      createdAt: new Date(),
+    });
+    const patientUser = { id: 'u1', organizationId: 'org-1', patientId: 'p1', role: 'patient' } as any;
+
+    const result = await service.downloadSelf('doc-1', patientUser);
+    expect(result.buffer).toBeDefined();
+    // Self download only exposes CONSENT/OTHER types (see the where clause).
+    expect(prisma.patientDocument.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ patientId: 'p1', type: { in: ['CONSENT', 'OTHER'] } }),
+      }),
+    );
+    expect(storage.read).toHaveBeenCalledWith('org-1/p1/consent.pdf');
+  });
+
+  it('does not expose internal clinical scans to a patient via self download', async () => {
+    const { service, prisma } = makeService();
+    // findFirst returns null when the doc is a non-self-accessible type.
+    prisma.patientDocument.findFirst.mockResolvedValue(null);
+    const patientUser = { id: 'u1', organizationId: 'org-1', patientId: 'p1', role: 'patient' } as any;
+    await expect(service.downloadSelf('doc-1', patientUser)).rejects.toThrow(NotFoundException);
+  });
 });
