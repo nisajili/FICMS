@@ -102,7 +102,8 @@ export const billing = {
 export const cryo = {
   tanks: () => api.get('/cryostorage/tanks'),
   map: (tankId: string) => api.get<any>(`/cryostorage/tanks/${tankId}/map`),
-  items: (status?: string) => api.get<any[]>('/cryostorage/items', status ? { status } : undefined),
+  items: (status?: string, patientId?: string) =>
+    api.get<any[]>('/cryostorage/items', { status, patientId }),
   createTank: (body: Record<string, unknown>) => api.post<any>('/cryostorage/tanks', body),
   createPosition: (body: Record<string, unknown>) => api.post<any>('/cryostorage/positions', body),
   store: (body: Record<string, unknown>) => api.post<any>('/cryostorage/items', body),
@@ -147,7 +148,7 @@ export const inventory = {
 };
 
 export const embryology = {
-  embryos: (q: { page?: number; pageSize?: number; cycleId?: string; status?: string }) =>
+  embryos: (q: { page?: number; pageSize?: number; cycleId?: string; status?: string; patientId?: string }) =>
     api.get<any[]>('/embryology/embryos', q),
   create: (body: Record<string, unknown>) => api.post<any>('/embryology/embryos', body),
   observe: (id: string, body: Record<string, unknown>) => api.post<any>(`/embryology/embryos/${id}/observations`, body),

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateEmbryoDto {
   @ApiProperty() cycleId!: string;
@@ -37,5 +37,6 @@ export class EmbryoQueryDto {
   @ApiPropertyOptional() page?: number;
   @ApiPropertyOptional() pageSize?: number;
   @ApiPropertyOptional() cycleId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() patientId?: string;
   @ApiPropertyOptional() status?: string;
 }

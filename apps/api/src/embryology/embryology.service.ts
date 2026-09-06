@@ -55,6 +55,7 @@ export class EmbryologyService {
     const { page, pageSize, skip, take, orderBy } = parsePagination(q);
     const where: Record<string, unknown> = { organizationId: org };
     if (q.cycleId) where.cycleId = q.cycleId;
+    if (q.patientId) where.patientId = q.patientId;
     if (q.status) where.status = q.status;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.embryo.findMany({ where, skip, take, orderBy: orderBy ?? { createdAt: 'asc' }, include: { observations: { orderBy: { day: 'asc' } } } }),

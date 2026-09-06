@@ -14,7 +14,7 @@ import {
   Button,
   EmptyState,
 } from '@ficms/ui';
-import { patients, clinicalNotes, lab, billing, cycles, pharmacy, documents, consents as consentsApi } from '@/lib/queries';
+import { patients, clinicalNotes, lab, billing, cycles, pharmacy, documents, consents as consentsApi, embryology, cryo, ultrasound, nursing, counseling } from '@/lib/queries';
 import { ApiClientError } from '@/lib/api';
 
 function field(value: string | null | undefined, fallback = '—') {
@@ -73,6 +73,26 @@ export default function PatientRecordPage() {
   const consentList = useQuery({
     queryKey: ['consents', id],
     queryFn: () => consentsApi.list({ patientId: id }),
+  });
+  const embryoList = useQuery({
+    queryKey: ['embryology', 'patient', id],
+    queryFn: () => embryology.embryos({ pageSize: 50, patientId: id }),
+  });
+  const cryoItems = useQuery({
+    queryKey: ['cryo', 'items', 'patient', id],
+    queryFn: () => cryo.items(undefined, id),
+  });
+  const ultrasoundQ = useQuery({
+    queryKey: ['ultrasound', 'patient', id],
+    queryFn: () => ultrasound.listForPatient(id),
+  });
+  const nursingQ = useQuery({
+    queryKey: ['nursing', 'patient', id],
+    queryFn: () => nursing.listVitals(id),
+  });
+  const counselingQ = useQuery({
+    queryKey: ['counseling', 'patient', id],
+    queryFn: () => counseling.list(id),
   });
 
   const signNote = useMutation({
@@ -135,6 +155,11 @@ export default function PatientRecordPage() {
   const invoiceRows = (invoices.data ?? []) as any[];
   const cycleRows = (cyclesQ.data ?? []) as any[];
   const rxRows = (prescriptions.data ?? []) as any[];
+  const embryoRows = (((embryoList.data as any)?.data) ?? embryoList.data ?? []) as any[];
+  const cryoRows = (cryoItems.data ?? []) as any[];
+  const ultrasoundRows = (ultrasoundQ.data ?? []) as any[];
+  const nursingRows = (nursingQ.data ?? []) as any[];
+  const counselingRows = (counselingQ.data ?? []) as any[];
   const docRows = (docList.data ?? []) as any[];
   const docTypes = ['ID', 'SCAN', 'REPORT', 'CONSENT', 'OTHER'];
   const consentRows = (consentList.data ?? []) as any[];
@@ -372,6 +397,103 @@ export default function PatientRecordPage() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Additional clinical history */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Clinical history</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {/* Ultrasound */}
+            <div className="rounded-md border border-slate-200 p-3">
+              <div className="mb-2 text-sm font-medium text-slate-700">Ultrasound scans</div>
+              {ultrasoundRows.length === 0 ? (
+                <p className="text-sm text-slate-500">None recorded.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {ultrasoundRows.map((u: any) => (
+                    <li key={u.id} className="flex items-center justify-between text-slate-600">
+                      <span>{u.type ?? 'Scan'}</span>
+                      <span className="text-xs text-slate-400">{new Date(u.scannedAt).toLocaleDateString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Nursing vitals */}
+            <div className="rounded-md border border-slate-200 p-3">
+              <div className="mb-2 text-sm font-medium text-slate-700">Nursing vitals</div>
+              {nursingRows.length === 0 ? (
+                <p className="text-sm text-slate-500">None recorded.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {nursingRows.map((v: any) => (
+                    <li key={v.id} className="flex items-center justify-between text-slate-600">
+                      <span>
+                        {v.temperatureC != null ? `${v.temperatureC}°C` : ''}{v.pulseBpm ? ` · ${v.pulseBpm} bpm` : ''}{v.bpSystolic ? ` · BP ${v.bpSystolic}/${v.bpDiastolic}` : ''}
+                      </span>
+                      <span className="text-xs text-slate-400">{new Date(v.recordedAt).toLocaleDateString()}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Embryology */}
+            <div className="rounded-md border border-slate-200 p-3">
+              <div className="mb-2 text-sm font-medium text-slate-700">Embryology</div>
+              {embryoRows.length === 0 ? (
+                <p className="text-sm text-slate-500">None recorded.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {embryoRows.map((e: any) => (
+                    <li key={e.id} className="flex items-center justify-between text-slate-600">
+                      <span>{e.label}{e.grade ? ` (${e.grade})` : ''}</span>
+                      <Badge tone="info">{e.status}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Cryostorage items */}
+            <div className="rounded-md border border-slate-200 p-3">
+              <div className="mb-2 text-sm font-medium text-slate-700">Cryostored items</div>
+              {cryoRows.length === 0 ? (
+                <p className="text-sm text-slate-500">None stored.</p>
+              ) : (
+                <ul className="space-y-1 text-sm">
+                  {cryoRows.map((it: any) => (
+                    <li key={it.id} className="flex items-center justify-between text-slate-600">
+                      <span>{it.label} <span className="text-xs text-slate-400">({it.type})</span></span>
+                      <Badge tone={it.status === 'RELEASED' ? 'danger' : 'success'}>{it.status}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Counseling */}
+          <div className="rounded-md border border-slate-200 p-3">
+            <div className="mb-2 text-sm font-medium text-slate-700">Counseling sessions</div>
+            {counselingRows.length === 0 ? (
+              <p className="text-sm text-slate-500">None recorded.</p>
+            ) : (
+              <ul className="space-y-1 text-sm">
+                {counselingRows.map((s: any) => (
+                  <li key={s.id} className="flex items-center justify-between text-slate-600">
+                    <span>{s.sessionType ?? 'Session'}</span>
+                    <span className="text-xs text-slate-400">{new Date(s.sessionDate).toLocaleDateString()}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </CardContent>
       </Card>
 

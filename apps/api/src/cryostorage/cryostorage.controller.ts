@@ -58,8 +58,12 @@ export class CryostorageController {
   @Get('items')
   @RequirePermissions('cryo_tank:view')
   @ApiOperation({ summary: 'List stored items' })
-  listItems(@Query('status') status: string | undefined, @CurrentUser() user: SessionUser) {
-    return this.service.listItems(user, status);
+  listItems(
+    @Query('status') status: string | undefined,
+    @Query('patientId') patientId: string | undefined,
+    @CurrentUser() user: SessionUser,
+  ) {
+    return this.service.listItems(user, status, patientId);
   }
 
   @Post('items/:id/release')

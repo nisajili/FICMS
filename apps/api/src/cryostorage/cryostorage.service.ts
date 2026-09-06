@@ -121,9 +121,13 @@ export class CryostorageService {
     return item;
   }
 
-  async listItems(user: SessionUser, status?: string) {
+  async listItems(user: SessionUser, status?: string, patientId?: string) {
     return this.prisma.cryoStorageItem.findMany({
-      where: { organizationId: user.organizationId ?? undefined, ...(status ? { status: status as never } : {}) },
+      where: {
+        organizationId: user.organizationId ?? undefined,
+        ...(status ? { status: status as never } : {}),
+        ...(patientId ? { patientId } : {}),
+      },
       include: { position: { include: { tank: true } }, patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } } },
       orderBy: { createdAt: 'desc' },
     });
