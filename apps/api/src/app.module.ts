@@ -31,6 +31,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BreakGlassModule } from './break-glass/break-glass.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
+import { DocumentsModule } from './documents/documents.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -63,6 +65,8 @@ import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
     PaymentsModule,
     BreakGlassModule,
     ClinicalNotesModule,
+    DocumentsModule,
+    StorageModule,
   ],
   providers: [
     // Order matters: resolve tenant scope first, then permissions.

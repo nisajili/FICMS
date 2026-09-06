@@ -42,3 +42,6 @@ tmp/
 
 # TypeScript incremental
 *.tsbuildinfo
+
+# Runtime local file storage (default StorageProvider)
+apps/api/storage/

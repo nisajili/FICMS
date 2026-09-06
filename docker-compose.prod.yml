@@ -56,12 +56,17 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_BUCKET: ${S3_BUCKET}
       S3_REGION: ${S3_REGION}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      STORAGE_LOCAL_ROOT: /app/apps/api/storage
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
       PLATFORM_BOOTSTRAP_TOKEN: ${PLATFORM_BOOTSTRAP_TOKEN}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
+    volumes:
+      - ficms_storage:/app/apps/api/storage
     depends_on:
       postgres:
         condition: service_healthy
@@ -111,5 +116,6 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+  ficms_storage:
   caddy_data:
   caddy_config:

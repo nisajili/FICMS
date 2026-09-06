@@ -1,5 +1,5 @@
 import type { SessionUser, DashboardStats, Patient, Appointment, Cycle } from '@ficms/types';
-import { api } from './api';
+import { api, API_BASE } from './api';
 
 export const auth = {
   login: (email: string, password: string) =>
@@ -35,6 +35,25 @@ export const patients = {
   update: (id: string, body: Record<string, unknown>) => api.patch<Patient>(`/patients/${id}`, body),
   linkPartner: (id: string, partnerId: string) => api.post(`/patients/${id}/partner`, { partnerId }),
   partners: (id: string) => api.get<any[]>(`/patients/${id}/partners`),
+};
+
+export const documents = {
+  listForPatient: (patientId: string) => api.get<any[]>(`/documents/patients/${patientId}`),
+  upload: (patientId: string, file: File, type: string, description?: string) =>
+    api.post(
+      '/documents',
+      (() => {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('patientId', patientId);
+        fd.append('type', type);
+        if (description) fd.append('description', description);
+        return fd;
+      })(),
+    ),
+  info: (id: string) => api.get<any>(`/documents/${id}/info`),
+  downloadUrl: (id: string) => `${API_BASE}/documents/${id}/download`,
+  remove: (id: string) => api.delete(`/documents/${id}`),
 };
 
 export const appointments = {

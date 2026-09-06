@@ -14,11 +14,23 @@ import {
   Button,
   EmptyState,
 } from '@ficms/ui';
-import { patients, clinicalNotes, lab, billing, cycles, pharmacy } from '@/lib/queries';
+import { patients, clinicalNotes, lab, billing, cycles, pharmacy, documents } from '@/lib/queries';
 import { ApiClientError } from '@/lib/api';
 
 function field(value: string | null | undefined, fallback = '—') {
   return value ? String(value) : fallback;
+}
+
+function formatBytes(bytes: number | undefined | null): string {
+  if (!bytes || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let i = 0;
+  let n = bytes;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 export default function PatientRecordPage() {
@@ -26,6 +38,7 @@ export default function PatientRecordPage() {
   const id = String(params.id);
   const qc = useQueryClient();
   const [error, setError] = React.useState('');
+  const [docMsg, setDocMsg] = React.useState('');
 
   const patient = useQuery({
     queryKey: ['patient', id],
@@ -51,11 +64,30 @@ export default function PatientRecordPage() {
     queryKey: ['pharmacy', 'prescriptions', id],
     queryFn: () => pharmacy.prescriptions({ pageSize: 50, patientId: id }),
   });
+  const docList = useQuery({
+    queryKey: ['documents', id],
+    queryFn: () => documents.listForPatient(id),
+  });
 
   const signNote = useMutation({
     mutationFn: (noteId: string) => clinicalNotes.sign(noteId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clinical-notes', id] }),
     onError: (e: unknown) => setError(e instanceof ApiClientError ? e.message : 'Signing failed.'),
+  });
+
+  const uploadDoc = useMutation({
+    mutationFn: ({ file, type, description }: { file: File; type: string; description?: string }) =>
+      documents.upload(id, file, type, description),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents', id] });
+      setDocMsg('Document uploaded.');
+    },
+    onError: (e: unknown) => setDocMsg(e instanceof ApiClientError ? e.message : 'Upload failed.'),
+  });
+  const deleteDoc = useMutation({
+    mutationFn: (docId: string) => documents.remove(docId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['documents', id] }),
+    onError: (e: unknown) => setDocMsg(e instanceof ApiClientError ? e.message : 'Delete failed.'),
   });
 
   const p = patient.data as any;
@@ -67,6 +99,8 @@ export default function PatientRecordPage() {
   const invoiceRows = (invoices.data ?? []) as any[];
   const cycleRows = (cyclesQ.data ?? []) as any[];
   const rxRows = (prescriptions.data ?? []) as any[];
+  const docRows = (docList.data ?? []) as any[];
+  const docTypes = ['ID', 'SCAN', 'REPORT', 'CONSENT', 'OTHER'];
 
   if (patient.isLoading) {
     return (
@@ -313,6 +347,93 @@ export default function PatientRecordPage() {
                       Sign
                     </Button>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Documents */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form
+            className="flex flex-wrap items-end gap-3 rounded-md border border-slate-200 p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              const file = fd.get('file') as File;
+              if (!file || file.size === 0) {
+                setDocMsg('Choose a file to upload.');
+                return;
+              }
+              uploadDoc.mutate({ file, type: String(fd.get('type') ?? 'OTHER'), description: String(fd.get('description') ?? '') || undefined });
+            }}
+          >
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              File
+              <input
+                type="file"
+                name="file"
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xlsx,.csv,.txt"
+                className="mt-1 text-sm"
+                required
+              />
+            </label>
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              Type
+              <select name="type" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm">
+                {docTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              Description
+              <input
+                name="description"
+                placeholder="Optional"
+                className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </label>
+            <Button type="submit" size="sm" variant="outline" loading={uploadDoc.isPending}>
+              Upload
+            </Button>
+          </form>
+
+          {docMsg && <p className="text-sm text-slate-600">{docMsg}</p>}
+          {docList.isLoading ? (
+            <div className="flex justify-center py-4"><Spinner /></div>
+          ) : docRows.length === 0 ? (
+            <p className="text-sm text-slate-500">No documents uploaded.</p>
+          ) : (
+            <div className="space-y-2">
+              {docRows.map((d: any) => (
+                <div key={d.id} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium text-slate-700">{d.fileName}</span>
+                      <Badge tone="info">{d.type}</Badge>
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {d.description || 'No description'} · {formatBytes(d.sizeBytes)} · {new Date(d.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a href={documents.downloadUrl(d.id)} target="_blank" rel="noreferrer">
+                      <Button variant="ghost" size="sm">Download</Button>
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600"
+                      loading={deleteDoc.isPending}
+                      onClick={() => deleteDoc.mutate(d.id)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

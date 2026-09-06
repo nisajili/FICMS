@@ -39,6 +39,8 @@ export const apiEnvSchema = commonEnv.extend({
     .string()
     .optional()
     .transform((v) => v === 'true'),
+  S3_PUBLIC_BASE_URL: z.string().optional(),
+  STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),
   SMS_PROVIDER: z.string().default('manual'),
   EMAIL_PROVIDER: z.string().default('console'),
   PAYMENT_PROVIDER: z.string().default('offline'),

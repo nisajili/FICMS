@@ -24,14 +24,13 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { query, headers, body, ...rest } = opts;
   const url = buildUrl(path, query);
-  const jsonBody = body && typeof body === 'object' && !(body instanceof FormData) ? JSON.stringify(body) : (body as BodyInit | undefined);
+  const isForm = body instanceof FormData;
+  const jsonBody = isForm ? (body as BodyInit) : body && typeof body === 'object' ? JSON.stringify(body) : (body as BodyInit | undefined);
+  const headersFor = () => ({ ...(isForm ? {} : { 'Content-Type': 'application/json' }), ...headers });
   const res = await fetch(url, {
     ...rest,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+    headers: headersFor(),
     body: jsonBody,
   });
 
@@ -40,7 +39,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     const retry = await fetch(url, {
       ...rest,
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...headers },
+      headers: headersFor(),
       body: jsonBody,
     });
     const json = (await retry.json()) as ApiResponse<T>;

@@ -58,9 +58,14 @@ services:
       S3_SECRET_ACCESS_KEY: minio123
       S3_BUCKET: ficms
       S3_REGION: us-east-1
+      STORAGE_PROVIDER: local
+      STORAGE_LOCAL_ROOT: /app/apps/api/storage
+      S3_PUBLIC_BASE_URL: ""
       COOKIE_SECURE: "false"
       API_PORT: 4000
       PLATFORM_BOOTSTRAP_TOKEN: dev-bootstrap-token
+    volumes:
+      - ficms_storage:/app/apps/api/storage
     command: sh -c "cd /app/apps/api && npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
     ports:
       - "4000:4000"
@@ -101,3 +106,4 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
+  ficms_storage:

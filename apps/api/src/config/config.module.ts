@@ -22,7 +22,9 @@ export interface AppConfig {
     accessKeyId: string;
     secretAccessKey: string;
     forcePathStyle: boolean;
+    publicBaseUrl?: string;
   };
+  storageProvider: string;
   smsProvider: string;
   emailProvider: string;
   paymentProvider: string;
@@ -70,7 +72,9 @@ export interface AppConfig {
             accessKeyId: parsed.S3_ACCESS_KEY_ID,
             secretAccessKey: parsed.S3_SECRET_ACCESS_KEY,
             forcePathStyle: parsed.S3_FORCE_PATH_STYLE ?? true,
+            publicBaseUrl: parsed.S3_PUBLIC_BASE_URL,
           },
+          storageProvider: parsed.STORAGE_PROVIDER,
           smsProvider: parsed.SMS_PROVIDER,
           emailProvider: parsed.EMAIL_PROVIDER,
           paymentProvider: parsed.PAYMENT_PROVIDER,
