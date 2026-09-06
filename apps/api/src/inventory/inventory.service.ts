@@ -71,7 +71,7 @@ export class InventoryService {
       throw new BadRequestException('Insufficient stock for this movement.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const updated = await tx.inventoryItem.update({
         where: { id: itemId },
         data: { quantityOnHand: newQty, updatedAt: new Date() },
