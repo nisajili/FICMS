@@ -143,9 +143,9 @@ async function main() {
       startDate: daysAgo(7),
       events: {
         create: [
-          { organizationId: org.id, eventType: 'baseline', title: 'Baseline scan', scheduledAt: daysAgo(7) },
-          { organizationId: org.id, eventType: 'trigger', title: 'Trigger injection', scheduledAt: daysAhead(3) },
-          { organizationId: org.id, eventType: 'retrieval', title: 'Egg retrieval', scheduledAt: daysAhead(5) },
+          { eventType: 'baseline', title: 'Baseline scan', scheduledAt: daysAgo(7) },
+          { eventType: 'trigger', title: 'Trigger injection', scheduledAt: daysAhead(3) },
+          { eventType: 'retrieval', title: 'Egg retrieval', scheduledAt: daysAhead(5) },
         ],
       },
     },
