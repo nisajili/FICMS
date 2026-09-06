@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -142,11 +143,20 @@ export default function PatientsPage() {
                 {data.map((p: any) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-mono text-xs">{p.medicalRecordNumber}</TableCell>
-                    <TableCell className="font-medium text-slate-900">{p.givenName} {p.familyName}</TableCell>
+                    <TableCell className="font-medium text-slate-900">
+                      <Link href={`/portal/patients/${p.id}`} className="text-brand-700 hover:underline">
+                        {p.givenName} {p.familyName}
+                      </Link>
+                    </TableCell>
                     <TableCell>{p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString() : '—'}</TableCell>
                     <TableCell>{p.sex}</TableCell>
                     <TableCell>{p.phone || p.email || '—'}</TableCell>
                     <TableCell><Badge tone={p.status === 'ACTIVE' ? 'success' : 'neutral'}>{p.status}</Badge></TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/portal/patients/${p.id}`}>
+                        <Button size="sm" variant="outline">View</Button>
+                      </Link>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

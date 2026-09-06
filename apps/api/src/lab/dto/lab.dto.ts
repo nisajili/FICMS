@@ -55,4 +55,5 @@ export class LabQueryDto {
   @ApiPropertyOptional() pageSize?: number;
   @ApiPropertyOptional() search?: string;
   @ApiPropertyOptional() status?: string;
+  @ApiPropertyOptional() patientId?: string;
 }

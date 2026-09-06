@@ -155,6 +155,7 @@ export class LabService {
     const { page, pageSize, skip, take, orderBy } = parsePagination(q);
     const where: Record<string, unknown> = { organizationId: org };
     if (q.status) where.status = q.status;
+    if (q.patientId) where.patientId = q.patientId;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.labOrder.findMany({ where, skip, take, orderBy: orderBy ?? { updatedAt: 'desc' }, include: { patient: { select: { id: true, givenName: true, familyName: true, medicalRecordNumber: true } }, results: true, specimens: true } }),
       this.prisma.labOrder.count({ where }),

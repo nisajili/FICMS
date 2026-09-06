@@ -30,10 +30,11 @@ export const dashboard = {
 export const patients = {
   list: (q: { page?: number; pageSize?: number; search?: string }) =>
     api.get<Patient[]>('/patients', q),
-  get: (id: string) => api.get<Patient>(`/patients/${id}`),
+  get: (id: string) => api.get<any>(`/patients/${id}`),
   create: (body: Record<string, unknown>) => api.post<Patient>('/patients', body),
   update: (id: string, body: Record<string, unknown>) => api.patch<Patient>(`/patients/${id}`, body),
   linkPartner: (id: string, partnerId: string) => api.post(`/patients/${id}/partner`, { partnerId }),
+  partners: (id: string) => api.get<any[]>(`/patients/${id}/partners`),
 };
 
 export const appointments = {
@@ -52,14 +53,15 @@ export const cycles = {
 };
 
 export const lab = {
-  orders: (q: { page?: number; pageSize?: number; status?: string }) => api.get('/lab/orders', q),
+  orders: (q: { page?: number; pageSize?: number; status?: string; patientId?: string }) => api.get('/lab/orders', q),
   tests: (q: { page?: number; pageSize?: number }) => api.get('/lab/tests', q),
   createOrder: (body: Record<string, unknown>) => api.post('/lab/orders', body),
   release: (id: string) => api.post(`/lab/orders/${id}/release`, {}),
 };
 
 export const billing = {
-  invoices: (q: { page?: number; pageSize?: number; status?: string }) => api.get('/billing/invoices', q),
+  invoices: (q: { page?: number; pageSize?: number; status?: string; patientId?: string }) =>
+    api.get('/billing/invoices', q),
   createInvoice: (body: Record<string, unknown>) => api.post('/billing/invoices', body),
   issue: (id: string) => api.patch(`/billing/invoices/${id}/issue`, {}),
   pay: (id: string, body: Record<string, unknown>) => api.post(`/billing/invoices/${id}/payments`, body),
