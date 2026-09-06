@@ -12,7 +12,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto, VerifyMfaDto, RefreshDto, LogoutDto, TotpVerifyDto } from './dto/auth.dto';
-import { CurrentUser } from '../common/decorators';
+import { CurrentUser, Public } from '../common/decorators';
 import { PermissionsGuard, RequirePermissions } from '../common/permissions.guard';
 import type { SessionUser } from '@ficms/types';
 
@@ -42,6 +42,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @Public()
   @ApiOperation({ summary: 'Authenticate with email + password' })
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(dto.email, dto.password, {
@@ -56,6 +57,7 @@ export class AuthController {
   }
 
   @Post('mfa/verify')
+  @Public()
   @ApiOperation({ summary: 'Complete 2FA challenge after password login' })
   async verifyMfa(@Body() dto: VerifyMfaDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.verifyMfa(dto.mfaToken, dto.code, {
@@ -67,6 +69,7 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @Public()
   @ApiOperation({ summary: 'Refresh access token from refresh cookie/token' })
   async refresh(@Body() dto: RefreshDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = dto.refreshToken ?? (req.cookies?.[REFRESH_COOKIE] as string | undefined);
@@ -80,6 +83,7 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Public()
   @ApiOperation({ summary: 'Revoke the current session' })
   async logout(@Body() dto: LogoutDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = dto.refreshToken ?? (req.cookies?.[REFRESH_COOKIE] as string | undefined);
@@ -92,9 +96,7 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(PermissionsGuard)
-  @RequirePermissions('patient:view_self')
-  @ApiOperation({ summary: 'Return the current session user' })
+  @ApiOperation({ summary: 'Return the current session user (any authenticated user)' })
   async me(@CurrentUser() user: SessionUser) {
     const fresh = await this.authService.getSessionUser(user.id);
     return { success: true, data: fresh ?? user };

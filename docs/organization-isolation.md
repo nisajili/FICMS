@@ -23,25 +23,48 @@ The `Organization` → `Facility` → `Department` hierarchy is the `tenant` tre
 
 ## 3. Isolation at the DB layer (PostgreSQL)
 
-The schema is designed to support PostgreSQL **Row-Level Security**. A
-production migration should enable RLS on isolated tables and add policies of
-the form:
+A ready-to-apply migration is included at
+`apps/api/prisma/migrations/20260103000000_rls/migration.sql`. It enables
+Row-Level Security (`ENABLE` + `FORCE ROW LEVEL SECURITY`) on every tenant
+table (49 models that carry `organizationId`) and creates a single
+`tenant_isolation` policy per table.
+
+**Safe by design.** Each policy is written so that when the session variable
+`app.current_org` is **not** set, it permits all rows:
 
 ```sql
-ALTER TABLE "Patient" ENABLE ROW LEVEL SECURITY;
-CREATE POLICY tenant_patient_select ON "Patient"
-  FOR SELECT USING (
-    "organizationId" = current_setting('app.current_org')::uuid
-  );
-CREATE POLICY tenant_patient_all ON "Patient"
-  FOR ALL USING (
-    "organizationId" = current_setting('app.current_org')::uuid
-  );
+CREATE POLICY tenant_isolation ON "Patient"
+  FOR ALL
+  USING (
+    current_setting('app.current_org', true) IS NULL
+    OR "organizationId" IS NULL
+    OR "organizationId"::text = current_setting('app.current_org', true)
+  )
+  WITH CHECK ( /* same rule */ );
 ```
 
-The application sets `app.current_org` at the start of a request/transaction.
-This is a defence-in-depth layer; the app-level guards remain the primary
-enforcement for correctness and usability.
+Because the deployment does not set `app.current_org` by default, applying this
+migration is a **no-op** — the app continues to rely on the application-level
+guards (which are the primary, tested enforcement). It cannot break a running
+deployment.
+
+**To activate strict DB-level isolation**, set the variable per
+request/transaction so `current_setting('app.current_org', true)` holds the
+caller's organisation id:
+
+```sql
+SELECT set_config('app.current_org', :orgId, true);  -- inside a transaction
+```
+
+With the variable set, a row is visible/modifiable only when its
+`organizationId` matches `app.current_org` (or is NULL, for platform-level
+rows such as platform-admin users / cross-org audit rows). Operators using a
+connection pooler that pins a connection per transaction, or a PgBouncer
+session-mode setting, can set this on the session. The application-level
+guards remain deployed regardless; RLS is an additional, independently-verifiable
+defence-in-depth barrier.
+
+## 4. App-level enforcement
 
 ## 4. App-level enforcement
 

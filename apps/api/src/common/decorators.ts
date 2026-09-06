@@ -2,6 +2,7 @@ import {
   createParamDecorator,
   ExecutionContext,
   ForbiddenException,
+  SetMetadata,
 } from '@nestjs/common';
 import type { SessionUser } from '@ficms/types';
 
@@ -32,8 +33,6 @@ export const CurrentUserId = createParamDecorator(
   },
 );
 
-/** Public route marker (no auth required). */
+/** Public route marker (no access-token required). Sets IS_PUBLIC_KEY metadata. */
 export const IS_PUBLIC_KEY = 'isPublic';
-export const Public = () => {
-  return (_target: unknown, _key?: string, _desc?: PropertyDescriptor) => {};
-};
+export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);

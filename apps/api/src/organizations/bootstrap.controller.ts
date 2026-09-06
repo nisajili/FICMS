@@ -5,6 +5,7 @@ import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrganizationsService } from './organizations.service';
 import { CreateOrganizationDto } from './dto/org.dto';
+import { Public } from '../common/decorators';
 
 class BootstrapPlatformAdminDto {
   @IsEmail() email!: string;
@@ -38,6 +39,7 @@ export class BootstrapController {
   }
 
   @Post('platform-admin')
+  @Public()
   @ApiOperation({ summary: 'Create the initial platform administrator' })
   async createPlatformAdmin(@Body() dto: BootstrapPlatformAdminDto) {
     this.verifyToken(dto.token);
@@ -54,6 +56,7 @@ export class BootstrapController {
   }
 
   @Post('organization')
+  @Public()
   @ApiOperation({ summary: 'Onboard an organisation during initial setup (org_owner admin)' })
   async createOrg(@Body() dto: BootstrapOrgDto) {
     this.verifyToken(dto.token);

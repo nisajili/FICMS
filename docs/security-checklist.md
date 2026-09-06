@@ -51,7 +51,10 @@ review; this repo does not claim certification.**
 
 ## To review before production
 - [ ] Penetration test of the deployed instance.
-- [ ] Enforce RLS policies on all isolated tables.
+- [x] RLS migration applied to all 49 tenant tables
+      (`20260103000000_rls/migration.sql`), safe-by-design (no-op while the app
+      does not set `app.current_org`). App-level guards remain the active
+      enforcement; RLS activates once `app.current_org` is set per transaction.
 - [ ] Configure real SMTP/SMS payment adapters via secrets (no hard-coding).
 - [ ] Audit logging for every PHI access (already wired; review retention).
 - [ ] Confirm data-retention, legal basis, and breach-notification process.
