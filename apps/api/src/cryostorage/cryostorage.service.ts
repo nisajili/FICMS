@@ -4,7 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import type { SessionUser } from '@ficms/types';
@@ -48,7 +47,7 @@ export class CryostorageService {
     const tank = await this.prisma.cryoTank.findFirst({ where: { id: dto.tankId, organizationId: org } });
     if (!tank) throw new NotFoundException('Tank not found.');
 
-    const posArgs: Prisma.CryoPositionUncheckedCreateInput = {
+    const posArgs = {
       organizationId: org,
       tankId: dto.tankId,
       room: dto.room,
@@ -61,7 +60,10 @@ export class CryostorageService {
     };
     // Composite unique prevents two positions in the same physical slot.
     const position = await this.prisma.cryoPosition.create({ data: posArgs }).catch((e: any) => {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+      // Detect the Postgres unique-violation (P2002) without depending on the
+      // generated client's error class so the module compiles against both a
+      // fresh and a bootstrapped client.
+      if (e && e.code === 'P2002') {
         throw new ConflictException('A storage position already exists at that physical location.');
       }
       throw e;

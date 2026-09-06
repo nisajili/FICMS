@@ -100,6 +100,13 @@ export const billing = {
 
 export const cryo = {
   tanks: () => api.get('/cryostorage/tanks'),
+  map: (tankId: string) => api.get<any>(`/cryostorage/tanks/${tankId}/map`),
+  items: (status?: string) => api.get<any[]>('/cryostorage/items', status ? { status } : undefined),
+  createTank: (body: Record<string, unknown>) => api.post<any>('/cryostorage/tanks', body),
+  createPosition: (body: Record<string, unknown>) => api.post<any>('/cryostorage/positions', body),
+  store: (body: Record<string, unknown>) => api.post<any>('/cryostorage/items', body),
+  release: (id: string, body: Record<string, unknown>) => api.post<any>(`/cryostorage/items/${id}/release`, body),
+  logTemperature: (body: Record<string, unknown>) => api.post<any>('/cryostorage/temperature', body),
 };
 
 export const admin = {

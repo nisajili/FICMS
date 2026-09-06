@@ -173,6 +173,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<RoleKey, string[]> = {
     'embryo:approve',
     'cryo_tank:view',
     'cryo_tank:create',
+    'cryo_tank:update',
+    'hr:view',
   ],
   andrologist: [
     'semen_analysis:view',
