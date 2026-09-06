@@ -268,6 +268,38 @@ export class AuthService {
     return this.toSessionUser(user);
   }
 
+  /**
+   * Resolve the current user's organisation branding for white-label rendering.
+   * Returns the org name plus the per-org settings (CLINIC_NAME, PRIMARY_COLOR,
+   * CURRENCY, TIMEZONE, ...). No clinic value is hard-coded in source.
+   */
+  async getOrganizationBranding(user: SessionUser): Promise<{
+    id: string | null;
+    name: string | null;
+    slug: string | null;
+    logoKey: string | null;
+    faviconKey: string | null;
+    settings: Record<string, unknown>;
+  }> {
+    const empty = { id: null, name: null, slug: null, logoKey: null, faviconKey: null, settings: {} };
+    if (!user.organizationId) return empty;
+    const org = await this.prisma.organization.findUnique({
+      where: { id: user.organizationId },
+      include: { settings: true },
+    });
+    if (!org) return empty;
+    const settings: Record<string, unknown> = {};
+    for (const s of org.settings) settings[s.key] = s.value;
+    return {
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      logoKey: org.logoKey,
+      faviconKey: org.faviconKey,
+      settings,
+    };
+  }
+
   /** Create a user record (used by bootstrap + user management). */
   async createUser(input: {
     email: string;

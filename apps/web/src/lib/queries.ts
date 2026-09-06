@@ -5,6 +5,7 @@ export const auth = {
   login: (email: string, password: string) =>
     api.post<{ requiresMfa: boolean; mfaToken?: string; user?: SessionUser }>('/auth/login', { email, password }),
   me: () => api.get<SessionUser>('/auth/me'),
+  organization: () => api.get<any>('/auth/me/organization'),
   logout: () => api.post<{ loggedOut: boolean }>('/auth/logout', {}),
 };
 

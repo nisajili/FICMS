@@ -1,8 +1,6 @@
 'use client';
 
-import * as React from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { cn } from '@ficms/ui';
 import {
   LayoutDashboard,
   Users,
@@ -24,9 +22,12 @@ import {
   UsersRound,
   BarChart3,
 } from 'lucide-react';
-import { cn } from '@ficms/ui';
-import { auth } from '@/lib/queries';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import * as React from 'react';
 import { BrandTheme } from './theme-toggle';
+import { useOrganization } from '@/hooks/use-organization';
+import { auth } from '@/lib/queries';
 
 const nav = [
   { href: '/portal/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -52,6 +53,7 @@ const nav = [
 export function PortalNav({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { name, primaryColor } = useOrganization();
   const logout = async () => {
     await auth.logout();
     router.push('/login');
@@ -60,11 +62,11 @@ export function PortalNav({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <BrandTheme />
+      <BrandTheme primaryColor={primaryColor} />
       <aside className="no-print hidden w-64 flex-col border-r border-slate-200 bg-white lg:flex">
         <div className="flex h-16 items-center gap-2 border-b border-slate-200 px-6">
           <Building2 className="h-6 w-6 text-brand-700" />
-          <span className="font-semibold text-slate-900">{'{CLINIC_NAME}'}</span>
+          <span className="truncate font-semibold text-slate-900">{name || '{CLINIC_NAME}'}</span>
         </div>
         <nav className="flex-1 space-y-1 p-4">
           {nav.map((item) => {

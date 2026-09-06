@@ -102,6 +102,12 @@ export class AuthController {
     return { success: true, data: fresh ?? user };
   }
 
+  @Get('me/organization')
+  @ApiOperation({ summary: 'My organisation branding for white-label rendering' })
+  async myOrganization(@CurrentUser() user: SessionUser) {
+    return { success: true, data: await this.authService.getOrganizationBranding(user) };
+  }
+
   @Post('mfa/setup')
   @UseGuards(PermissionsGuard)
   @RequirePermissions('admin:update')
