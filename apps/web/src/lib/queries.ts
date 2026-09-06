@@ -37,6 +37,18 @@ export const patients = {
   partners: (id: string) => api.get<any[]>(`/patients/${id}/partners`),
 };
 
+export const consents = {
+  list: (q: { patientId?: string; status?: string }) => api.get<any[]>('/consents', q),
+  get: (id: string) => api.get<any>(`/consents/${id}`),
+  create: (body: Record<string, unknown>) => api.post<any>('/consents', body),
+  update: (id: string, body: Record<string, unknown>) => api.patch<any>(`/consents/${id}`, body),
+  sign: (id: string, body: { signedByName: string; witnessName?: string; evidenceKey?: string }) => api.post<any>(`/consents/${id}/sign`, body),
+  witness: (id: string, body: { witnessName: string }) => api.post<any>(`/consents/${id}/witness`, body),
+  revoke: (id: string, reason?: string) => api.post<any>(`/consents/${id}/revoke`, { reason }),
+  version: (id: string) => api.post<any>(`/consents/${id}/version`),
+  remove: (id: string) => api.delete(`/consents/${id}`),
+};
+
 export const documents = {
   listForPatient: (patientId: string) => api.get<any[]>(`/documents/patients/${patientId}`),
   upload: (patientId: string, file: File, type: string, description?: string) =>

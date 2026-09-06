@@ -31,6 +31,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BreakGlassModule } from './break-glass/break-glass.module';
 import { ClinicalNotesModule } from './clinical-notes/clinical-notes.module';
+import { ConsentsModule } from './consents/consents.module';
 import { DocumentsModule } from './documents/documents.module';
 import { StorageModule } from './storage/storage.module';
 
@@ -65,6 +66,7 @@ import { StorageModule } from './storage/storage.module';
     PaymentsModule,
     BreakGlassModule,
     ClinicalNotesModule,
+    ConsentsModule,
     DocumentsModule,
     StorageModule,
   ],

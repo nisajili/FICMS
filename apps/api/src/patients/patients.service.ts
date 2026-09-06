@@ -316,7 +316,7 @@ export class PatientsService {
       return { ...consent, alreadySigned: true };
     }
     const updated = await this.prisma.consent.update({
-      where: { id },
+      where: { id, ...(user.organizationId ? { organizationId: user.organizationId } : {}) },
       data: {
         status: 'SIGNED',
         signedAt: new Date(),

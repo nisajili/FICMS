@@ -83,6 +83,7 @@ export class PrismaService
     'Appointment',
     'Encounter',
     'ClinicalNote',
+    'Consent',
     'MedicalHistory',
     'Cycle',
     'CycleMedication',

@@ -14,7 +14,7 @@ import {
   Button,
   EmptyState,
 } from '@ficms/ui';
-import { patients, clinicalNotes, lab, billing, cycles, pharmacy, documents } from '@/lib/queries';
+import { patients, clinicalNotes, lab, billing, cycles, pharmacy, documents, consents as consentsApi } from '@/lib/queries';
 import { ApiClientError } from '@/lib/api';
 
 function field(value: string | null | undefined, fallback = '—') {
@@ -39,6 +39,8 @@ export default function PatientRecordPage() {
   const qc = useQueryClient();
   const [error, setError] = React.useState('');
   const [docMsg, setDocMsg] = React.useState('');
+  const [consentMsg, setConsentMsg] = React.useState('');
+  const [consentForm, setConsentForm] = React.useState<{ kind: 'sign' | 'witness'; id: string } | null>(null);
 
   const patient = useQuery({
     queryKey: ['patient', id],
@@ -68,6 +70,10 @@ export default function PatientRecordPage() {
     queryKey: ['documents', id],
     queryFn: () => documents.listForPatient(id),
   });
+  const consentList = useQuery({
+    queryKey: ['consents', id],
+    queryFn: () => consentsApi.list({ patientId: id }),
+  });
 
   const signNote = useMutation({
     mutationFn: (noteId: string) => clinicalNotes.sign(noteId),
@@ -90,9 +96,39 @@ export default function PatientRecordPage() {
     onError: (e: unknown) => setDocMsg(e instanceof ApiClientError ? e.message : 'Delete failed.'),
   });
 
+  const createConsent = useMutation({
+    mutationFn: (body: Record<string, unknown>) => consentsApi.create(body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['consents', id] });
+      setConsentMsg('Consent draft created.');
+    },
+    onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Create failed.'),
+  });
+  const signConsent = useMutation({
+    mutationFn: ({ cid, signedByName, witnessName }: { cid: string; signedByName: string; witnessName?: string }) =>
+      consentsApi.sign(cid, { signedByName, witnessName }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consents', id] }),
+    onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Sign failed.'),
+  });
+  const witnessConsent = useMutation({
+    mutationFn: ({ cid, witnessName }: { cid: string; witnessName: string }) => consentsApi.witness(cid, { witnessName }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consents', id] }),
+    onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Witness failed.'),
+  });
+  const versionConsent = useMutation({
+    mutationFn: (cid: string) => consentsApi.version(cid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consents', id] }),
+    onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Version failed.'),
+  });
+  const deleteConsent = useMutation({
+    mutationFn: (cid: string) => consentsApi.remove(cid),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['consents', id] }),
+    onError: (e: unknown) => setConsentMsg(e instanceof ApiClientError ? e.message : 'Delete failed.'),
+  });
+
   const p = patient.data as any;
   const partnerLinks = (p?.partnerLinks ?? []) as any[];
-  const consents = (p?.consents ?? []) as any[];
+
   const appointments = (p?.appointments ?? []) as any[];
   const noteRows = (notes.data ?? []) as any[];
   const orderRows = (orders.data ?? []) as any[];
@@ -101,6 +137,11 @@ export default function PatientRecordPage() {
   const rxRows = (prescriptions.data ?? []) as any[];
   const docRows = (docList.data ?? []) as any[];
   const docTypes = ['ID', 'SCAN', 'REPORT', 'CONSENT', 'OTHER'];
+  const consentRows = (consentList.data ?? []) as any[];
+  const consentTone = (s: string): any =>
+    s === 'SIGNED' || s === 'WITNESSED' ? 'success' : s === 'REVOKED' ? 'danger' : 'warning';
+  const consentLabel = (s: string): string =>
+    ({ DRAFT: 'Draft', PENDING_SIGNATURE: 'Pending', SIGNED: 'Signed', WITNESSED: 'Witnessed', REVOKED: 'Revoked' }[s] ?? s);
 
   if (patient.isLoading) {
     return (
@@ -176,27 +217,6 @@ export default function PatientRecordPage() {
                       {pl.patient?.familyName} {pl.patient?.givenName}
                     </span>
                     <Badge tone="neutral">{pl.relationshipType ?? 'partner'}</Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Consents */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Consents</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {consents.length === 0 ? (
-              <p className="text-sm text-slate-500">No consents.</p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {consents.map((c: any) => (
-                  <li key={c.id} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-                    <span className="text-slate-700">{c.title ?? c.consentType ?? c.type ?? 'Consent'}</span>
-                    <Badge tone={c.status === 'SIGNED' ? 'success' : 'warning'}>{c.status}</Badge>
                   </li>
                 ))}
               </ul>
@@ -436,6 +456,128 @@ export default function PatientRecordPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Consents */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Consents</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form
+            className="flex flex-wrap items-end gap-3 rounded-md border border-slate-200 p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const fd = new FormData(e.currentTarget);
+              createConsent.mutate({
+                patientId: id,
+                title: String(fd.get('title') ?? 'Consent'),
+                content: String(fd.get('content') ?? '') || undefined,
+              });
+            }}
+          >
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              Title
+              <input name="title" required placeholder="IVF treatment consent" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+            </label>
+            <label className="flex flex-col text-xs font-medium text-slate-600">
+              Content
+              <input name="content" placeholder="Optional" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+            </label>
+            <Button type="submit" size="sm" variant="outline" loading={createConsent.isPending}>
+              Create draft
+            </Button>
+          </form>
+
+          {consentMsg && <p className="text-sm text-slate-600">{consentMsg}</p>}
+          {consentList.isLoading ? (
+            <div className="flex justify-center py-4"><Spinner /></div>
+          ) : consentRows.length === 0 ? (
+            <p className="text-sm text-slate-500">No consents on file.</p>
+          ) : (
+            <div className="space-y-2">
+              {consentRows.map((c: any) => {
+                const cf = consentForm;
+                const isEditable = c.status === 'DRAFT' || c.status === 'PENDING_SIGNATURE';
+                const isSigned = c.status === 'SIGNED';
+                const isWitnessed = c.status === 'WITNESSED';
+                const isSigning = !!cf && cf.id === c.id && cf.kind === 'sign';
+                const isWitnessing = !!cf && cf.id === c.id && cf.kind === 'witness';
+                return (
+                  <div key={c.id} className="rounded-md border border-slate-200 p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-slate-700">{c.title}</span>
+                        <Badge tone={consentTone(c.status)}>{consentLabel(c.status)}</Badge>
+                        <span className="text-xs text-slate-500">v{c.version}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {(c.signedByName || c.signedAt) && (
+                          <span className="text-xs text-slate-500">
+                            Signed by {c.signedByName ?? '—'}{c.signedAt ? ` · ${new Date(c.signedAt).toLocaleDateString()}` : ''}
+                          </span>
+                        )}
+                        {isEditable && !consentForm && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => setConsentForm({ kind: 'sign', id: c.id })}>Sign</Button>
+                            <Button size="sm" variant="ghost" className="text-red-600" loading={deleteConsent.isPending} onClick={() => deleteConsent.mutate(c.id)}>Delete</Button>
+                          </>
+                        )}
+                        {isSigned && !consentForm && (
+                          <>
+                            <Button size="sm" variant="outline" onClick={() => setConsentForm({ kind: 'witness', id: c.id })}>Witness</Button>
+                          </>
+                        )}
+                        {(isSigned || isWitnessed || c.status === 'REVOKED') && (
+                          <>
+                            <Button size="sm" variant="ghost" loading={versionConsent.isPending} onClick={() => versionConsent.mutate(c.id)}>New version</Button>
+                          </>
+                        )}
+                        {isWitnessed && (
+                          <Button size="sm" variant="ghost" className="text-red-600" onClick={() => { if (window.confirm('Revoke this consent?')) consentsApi.revoke(c.id).then(() => qc.invalidateQueries({ queryKey: ['consents', id] })); }}>Revoke</Button>
+                        )}
+                      </div>
+                    </div>
+                    {isWitnessing && (
+                      <form className="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const fd = new FormData(e.currentTarget);
+                          witnessConsent.mutate({ cid: c.id, witnessName: String(fd.get('witnessName') ?? '') });
+                          setConsentForm(null);
+                        }}>
+                        <label className="flex flex-col text-xs font-medium text-slate-600">
+                          Witness name
+                          <input name="witnessName" required className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                        </label>
+                        <Button type="submit" size="sm" variant="outline" loading={witnessConsent.isPending}>Confirm witness</Button>
+                      </form>
+                    )}
+                    {isSigning && (
+                      <form className="mt-2 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-2"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const fd = new FormData(e.currentTarget);
+                          signConsent.mutate({ cid: c.id, signedByName: String(fd.get('signedByName') ?? 'Patient'), witnessName: String(fd.get('witnessName') ?? '') || undefined });
+                          setConsentForm(null);
+                        }}>
+                        <label className="flex flex-col text-xs font-medium text-slate-600">
+                          Signer name
+                          <input name="signedByName" required className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                        </label>
+                        <label className="flex flex-col text-xs font-medium text-slate-600">
+                          Witness name (optional)
+                          <input name="witnessName" className="mt-1 rounded-md border border-slate-300 px-2 py-1.5 text-sm" />
+                        </label>
+                        <Button type="submit" size="sm" variant="outline" loading={signConsent.isPending}>Confirm sign</Button>
+                      </form>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
