@@ -69,3 +69,14 @@ permission matrix.
 - Never share your password or 2FA codes.
 - Log out of shared devices.
 - Report suspected data issues to your administrator immediately.
+- **Ultrasound**: record follicular/pelvic/early-pregnancy scans and verify them
+  (clinician verification recorded with timestamp).
+- **Nursing**: record vital signs and nursing notes/discharge instructions.
+- **Counseling**: record confidential counseling sessions (optionally marked
+  confidential; counselors only).
+- **Donors**: register anonymized donor profiles and manage eligibility — no
+  identity data is stored or shown.
+- **HR**: maintain staff profiles/licensing and manage leave requests
+  (submit/approve/reject).
+- **Reports**: clinical cycle outcomes, financial summary, operational metrics,
+  and a de-identified clinical CSV export.

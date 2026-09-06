@@ -84,4 +84,17 @@ export class HrService {
     await this.audit.record({ action: approved ? 'hr.approve_leave' : 'hr.reject_leave', resourceType: 'hr', resourceId: id }, user);
     return updated;
   }
+
+  /** List leave requests for the organisation (newest first). */
+  async listLeave(q: { status?: string; userId?: string }, user: SessionUser) {
+    const org = user.organizationId;
+    if (!org) return [];
+    const where: Record<string, unknown> = { organizationId: org };
+    if (q.status) where.status = q.status;
+    if (q.userId) where.userId = q.userId;
+    return this.prisma.leaveRequest.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

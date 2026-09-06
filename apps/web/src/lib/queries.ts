@@ -115,6 +115,44 @@ export const embryology = {
   setStatus: (id: string, status: string) => api.patch<any>(`/embryology/embryos/${id}/status`, { status }),
 };
 
+export const ultrasound = {
+  create: (body: Record<string, unknown>) => api.post('/ultrasound/scans', body),
+  listForPatient: (patientId: string) => api.get<any[]>(`/ultrasound/patients/${patientId}/scans`),
+  verify: (id: string) => api.post(`/ultrasound/scans/${id}/verify`, {}),
+};
+
+export const nursing = {
+  recordVitals: (body: Record<string, unknown>) => api.post('/nursing/vitals', body),
+  listVitals: (patientId: string) => api.get<any[]>(`/nursing/patients/${patientId}/vitals`),
+  addNote: (body: Record<string, unknown>) => api.post('/nursing/notes', body),
+};
+
+export const counseling = {
+  create: (body: Record<string, unknown>) => api.post('/counseling/sessions', body),
+  list: (patientId: string) => api.get<any[]>(`/counseling/patients/${patientId}/sessions`),
+};
+
+export const donors = {
+  list: () => api.get<any[]>('/donors'),
+  create: (body: Record<string, unknown>) => api.post<any>('/donors', body),
+  setEligibility: (id: string, eligibility: boolean) => api.patch<any>(`/donors/${id}/eligibility`, { eligibility }),
+};
+
+export const hr = {
+  staff: () => api.get<any[]>('/hr/staff'),
+  upsertStaff: (body: Record<string, unknown>) => api.post<any>('/hr/staff', body),
+  leave: (q: { status?: string; userId?: string } = {}) => api.get<any[]>('/hr/leave', q),
+  submitLeave: (body: Record<string, unknown>) => api.post<any>('/hr/leave', body),
+  approveLeave: (id: string, approved: boolean) => api.post<any>(`/hr/leave/${id}/decision`, { approved }),
+};
+
+export const reports = {
+  cycleOutcomes: (from?: string, to?: string) => api.get<any>('/reports/clinical/cycle-outcomes', { from, to }),
+  financial: (from?: string, to?: string) => api.get<any>('/reports/financial/summary', { from, to }),
+  operational: (from?: string, to?: string) => api.get<any>('/reports/operational/summary', { from, to }),
+  exportClinical: () => api.get<any[]>('/reports/clinical/export'),
+};
+
 export const pharmacy = {
   medications: (q: { page?: number; pageSize?: number; search?: string }) => api.get('/pharmacy/medications', q),
   createMedication: (body: Record<string, unknown>) => api.post('/pharmacy/medications', body),

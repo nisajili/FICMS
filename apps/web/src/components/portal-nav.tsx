@@ -17,6 +17,12 @@ import {
   FileText,
   Pill,
   Microscope,
+  Scan,
+  Activity,
+  MessageSquare,
+  HeartHandshake,
+  UsersRound,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@ficms/ui';
 import { auth } from '@/lib/queries';
@@ -34,6 +40,12 @@ const nav = [
   { href: '/portal/pharmacy', label: 'Pharmacy', icon: Pill },
   { href: '/portal/inventory', label: 'Inventory', icon: Package },
   { href: '/portal/cryostorage', label: 'Cryostorage', icon: Snowflake },
+  { href: '/portal/ultrasound', label: 'Ultrasound', icon: Scan },
+  { href: '/portal/nursing', label: 'Nursing', icon: Activity },
+  { href: '/portal/counseling', label: 'Counseling', icon: MessageSquare },
+  { href: '/portal/donors', label: 'Donors', icon: HeartHandshake },
+  { href: '/portal/hr', label: 'HR', icon: UsersRound },
+  { href: '/portal/reports', label: 'Reports', icon: BarChart3 },
   { href: '/portal/settings', label: 'Settings', icon: Settings },
 ];
 

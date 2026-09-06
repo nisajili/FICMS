@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { HrService } from './hr.service';
 import { CurrentUser } from '../common/decorators';
@@ -23,6 +23,13 @@ export class HrController {
   @ApiOperation({ summary: 'List staff profiles' })
   listStaff(@CurrentUser() user: SessionUser) {
     return this.service.listStaff(user);
+  }
+
+  @Get('leave')
+  @RequirePermissions('hr:view')
+  @ApiOperation({ summary: 'List leave requests' })
+  listLeave(@Query() q: { status?: string; userId?: string }, @CurrentUser() user: SessionUser) {
+    return this.service.listLeave(q, user);
   }
 
   @Post('leave')
