@@ -10,6 +10,7 @@
     "start:prod": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
+    "typecheck:stub": "tsc --noEmit -p tsconfig.stub.json",
     "test": "jest --passWithNoTests",
     "test:unit": "jest --passWithNoTests",
     "db:generate": "prisma generate",
